@@ -82,9 +82,9 @@ mod tests {
     #[test]
     pub fn test() {
         let reader = File::open("test_data/agency.txt").unwrap();
-        let res: Vec<Agency> = parse_entity(reader).unwrap();
+        let _res: Vec<Agency> = parse_entity(reader).unwrap();
 
         let reader = File::open("test_data/calendar_dates.txt").unwrap();
-        let res: Vec<CalendarDate> = parse_entity(reader).unwrap();
+        let _res: Vec<CalendarDate> = parse_entity(reader).unwrap();
     }
 }
