@@ -1,0 +1,38 @@
+[package]
+name = "parse-gtfs"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["full"]
+
+# Include all features
+full = ["schedule", "schedule_parse", "zip", "chrono", "chrono_tz", "realtime"]
+
+# Include all types for realtime and schedule data, without parsing of any kind
+types = ["schedule", "realtime"] 
+
+# Include schedule types only
+schedule = [] 
+# Includes parsing from csv Streams 
+schedule_parse = ["dep:serde", "dep:serde_repr", "dep:csv", "schedule"]
+# Include zip crate to add functionality to parse data from .zip files directly (since a gtfs_data.zip file is a common, but not universal, distribution type)
+zip = ["dep:zip", "schedule", "schedule_parse"] 
+
+# Include chrono crate for better time representations. E.g. StopTime timings will be represented as chrono objects, timezone in agency will also be chrono objects, etc.
+chrono = ["dep:chrono"] 
+# chrono_tz is a small overhead for very little benefit other than client convenience for a handful of fields. This can be disabled if this specific chrono feature is not needed/desired
+chrono_tz = ["dep:chrono-tz", "chrono"] 
+
+# Include realtime types only
+realtime = [] 
+
+[dependencies]
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde_repr = { version = "0.1.20", optional = true }
+csv = { version = "1.4.0", optional = true }
+
+zip = { version = "8.6.0", optional = true }
+
+chrono = { version = "0.4.44", optional = true }
+chrono-tz = { version = "0.10.4", optional = true }
