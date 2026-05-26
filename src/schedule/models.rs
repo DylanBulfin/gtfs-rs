@@ -6,6 +6,9 @@ use {
     serde_repr::{Deserialize_repr, Serialize_repr},
 };
 
+#[cfg(all(feature = "schedule_parse", feature = "chrono"))]
+use serde::Deserializer;
+
 #[cfg(feature = "chrono")]
 use chrono::{NaiveDate, NaiveTime};
 
@@ -217,430 +220,545 @@ derives_enum!(
 
 #[derive(Clone, Debug)]
 pub struct GTFSData {
-    agencies: Vec<Agency>,
-    stops: Vec<Stop>,
-    routes: Vec<Route>,
-    trips: Vec<Trip>,
-    stop_times: Vec<StopTime>,
-    calendar: Vec<Calendar>,
-    calendar_dates: Vec<CalendarDate>,
-    fare_attributes: Vec<FareAttribute>,
-    fare_rules: Vec<FareRule>,
-    timeframes: Vec<Timeframe>,
-    rider_categories: Vec<RiderCategory>,
-    fare_media: Vec<FareMedia>,
-    fare_products: Vec<FareProduct>,
-    fare_leg_rules: Vec<FareLegRule>,
-    fare_leg_join_rules: Vec<FareLegJoinRule>,
-    fare_transfer_rules: Vec<FareTransferRule>,
-    areas: Vec<Area>,
-    stop_areas: Vec<StopArea>,
-    networks: Vec<Network>,
-    route_networks: Vec<RouteNetwork>,
-    shapes: Vec<Shape>,
-    frequencies: Vec<Frequency>,
-    transfers: Vec<Transfer>,
-    pathways: Vec<Pathway>,
-    levels: Vec<Level>,
-    location_groups: Vec<LocationGroup>,
-    location_group_stops: Vec<LocationGroupStop>,
-    locations: Vec<Location>,
-    booking_rules: Vec<BookingRule>,
-    translations: Vec<Translation>,
-    feed_info: Vec<FeedInfo>,
-    attributions: Vec<Attribution>,
+    pub agencies: Vec<Agency>,
+    pub stops: Vec<Stop>,
+    pub routes: Vec<Route>,
+    pub trips: Vec<Trip>,
+    pub stop_times: Vec<StopTime>,
+    pub calendar: Vec<Calendar>,
+    pub calendar_dates: Vec<CalendarDate>,
+    pub fare_attributes: Vec<FareAttribute>,
+    pub fare_rules: Vec<FareRule>,
+    pub timeframes: Vec<Timeframe>,
+    pub rider_categories: Vec<RiderCategory>,
+    pub fare_media: Vec<FareMedia>,
+    pub fare_products: Vec<FareProduct>,
+    pub fare_leg_rules: Vec<FareLegRule>,
+    pub fare_leg_join_rules: Vec<FareLegJoinRule>,
+    pub fare_transfer_rules: Vec<FareTransferRule>,
+    pub areas: Vec<Area>,
+    pub stop_areas: Vec<StopArea>,
+    pub networks: Vec<Network>,
+    pub route_networks: Vec<RouteNetwork>,
+    pub shapes: Vec<Shape>,
+    pub frequencies: Vec<Frequency>,
+    pub transfers: Vec<Transfer>,
+    pub pathways: Vec<Pathway>,
+    pub levels: Vec<Level>,
+    pub location_groups: Vec<LocationGroup>,
+    pub location_group_stops: Vec<LocationGroupStop>,
+    pub locations: Vec<Location>,
+    pub booking_rules: Vec<BookingRule>,
+    pub translations: Vec<Translation>,
+    pub feed_info: Vec<FeedInfo>,
+    pub attributions: Vec<Attribution>,
+}
+
+#[cfg(all(feature = "schedule_parse", feature = "chrono"))]
+pub fn deser_date<'de, D>(d: D) -> Result<NaiveDate, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(d)?;
+
+    let year: i32 = (&s[0..4]).parse().unwrap_or_default();
+    let month: u32 = (&s[4..6]).parse().unwrap_or_default();
+    let day: u32 = (&s[6..8]).parse().unwrap_or_default();
+
+    let date = NaiveDate::from_ymd_opt(year, month, day).unwrap_or_default();
+
+    Ok(date)
+}
+
+#[cfg(all(feature = "schedule_parse", feature = "chrono"))]
+pub fn deser_opt_date<'de, D>(d: D) -> Result<Option<NaiveDate>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(d)?;
+
+    let year: i32 = (&s[0..4]).parse().unwrap_or(i32::MIN);
+    let month: u32 = (&s[4..6]).parse().unwrap_or(u32::MAX);
+    let day: u32 = (&s[6..8]).parse().unwrap_or(u32::MAX);
+
+    Ok(NaiveDate::from_ymd_opt(year, month, day))
+}
+
+#[cfg(all(feature = "schedule_parse", feature = "chrono"))]
+pub fn deser_time<'de, D>(d: D) -> Result<NaiveTime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(d)?;
+
+    let hour: u32 = (&s[0..2]).parse().unwrap_or_default();
+    let min: u32 = (&s[3..5]).parse().unwrap_or_default();
+    let sec: u32 = (&s[6..8]).parse().unwrap_or_default();
+
+    let time = NaiveTime::from_hms_opt(hour, min, sec).unwrap_or_default();
+
+    Ok(time)
+}
+
+#[cfg(all(feature = "schedule_parse", feature = "chrono"))]
+pub fn deser_opt_time<'de, D>(d: D) -> Result<Option<NaiveTime>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(d)?;
+
+    let hour: u32 = (&s[0..2]).parse().unwrap_or(u32::MAX);
+    let min: u32 = (&s[3..5]).parse().unwrap_or(u32::MAX);
+    let sec: u32 = (&s[6..8]).parse().unwrap_or(u32::MAX);
+
+    Ok(NaiveTime::from_hms_opt(hour, min, sec))
 }
 
 derives!(
     pub struct Agency {
-        agency_id: Option<String>,
-        agency_name: String,
-        agency_url: String,
+        pub agency_id: Option<String>,
+        pub agency_name: String,
+        pub agency_url: String,
 
         #[cfg(not(feature = "chrono_tz"))]
-        agency_timezone: String,
+        pub agency_timezone: String,
         #[cfg(feature = "chrono_tz")]
-        agency_timezone: Tz,
+        pub agency_timezone: Tz,
 
-        agency_lang: Option<String>,
-        agency_phone: Option<String>,
-        agency_fare_url: Option<String>,
-        agency_email: Option<String>,
-        cemv_support: Option<CEMVSupport>,
+        pub agency_lang: Option<String>,
+        pub agency_phone: Option<String>,
+        pub agency_fare_url: Option<String>,
+        pub agency_email: Option<String>,
+        pub cemv_support: Option<CEMVSupport>,
     }
 
     pub struct Stop {
-        stop_id: String,
-        stop_code: Option<String>,
-        stop_name: Option<String>,
-        tts_stop_name: Option<String>,
-        stop_desc: Option<String>,
-        stop_lat: Option<String>,
-        stop_lon: Option<String>,
-        zone_id: Option<String>,
-        stop_url: Option<String>,
-        location_type: Option<LocationType>,
-        parent_station: Option<String>,
+        pub stop_id: String,
+        pub stop_code: Option<String>,
+        pub stop_name: Option<String>,
+        pub tts_stop_name: Option<String>,
+        pub stop_desc: Option<String>,
+        pub stop_lat: Option<String>,
+        pub stop_lon: Option<String>,
+        pub zone_id: Option<String>,
+        pub stop_url: Option<String>,
+        pub location_type: Option<LocationType>,
+        pub parent_station: Option<String>,
 
         #[cfg(not(feature = "chrono_tz"))]
-        stop_timezone: Option<String>,
+        pub stop_timezone: Option<String>,
         #[cfg(feature = "chrono_tz")]
-        stop_timezone: Option<Tz>,
+        pub stop_timezone: Option<Tz>,
 
-        wheelchair_boarding: Option<WheelchairAccessibility>,
-        level_id: Option<String>,
-        platform_code: Option<String>,
-        stop_access: Option<StopAccess>,
+        pub wheelchair_boarding: Option<WheelchairAccessibility>,
+        pub level_id: Option<String>,
+        pub platform_code: Option<String>,
+        pub stop_access: Option<StopAccess>,
     }
 
     pub struct Route {
-        route_id: String,
-        agency_id: Option<String>,
-        route_short_name: Option<String>,
-        route_long_name: Option<String>,
-        route_desc: Option<String>,
-        route_type: Option<RouteType>,
-        route_url: Option<String>,
-        route_color: Option<String>,
-        route_text_color: Option<String>,
-        route_sort_order: Option<u32>,
-        continuous_pickup: Option<ContinuousPickup>,
-        continuous_drop_off: Option<ContinuousDropoff>,
-        network_id: Option<String>,
-        cemv_support: Option<CEMVSupport>,
+        pub route_id: String,
+        pub agency_id: Option<String>,
+        pub route_short_name: Option<String>,
+        pub route_long_name: Option<String>,
+        pub route_desc: Option<String>,
+        pub route_type: Option<RouteType>,
+        pub route_url: Option<String>,
+        pub route_color: Option<String>,
+        pub route_text_color: Option<String>,
+        pub route_sort_order: Option<u32>,
+        pub continuous_pickup: Option<ContinuousPickup>,
+        pub continuous_drop_off: Option<ContinuousDropoff>,
+        pub network_id: Option<String>,
+        pub cemv_support: Option<CEMVSupport>,
     }
 
     pub struct Trip {
-        route_id: String,
-        service_id: String,
-        trip_id: String,
-        trip_headsign: Option<String>,
-        trip_short_name: Option<String>,
-        direction_id: Option<TripDirection>,
-        block_id: Option<String>,
-        shape_id: Option<String>,
-        wheelchair_accessible: Option<WheelchairAccessibility>,
-        bikes_allowed: Option<BikeSupport>,
-        cars_allowed: Option<CarSupport>,
-        safe_duration_factor: Option<f64>,
-        safe_duration_offset: Option<f64>,
+        pub route_id: String,
+        pub service_id: String,
+        pub trip_id: String,
+        pub trip_headsign: Option<String>,
+        pub trip_short_name: Option<String>,
+        pub direction_id: Option<TripDirection>,
+        pub block_id: Option<String>,
+        pub shape_id: Option<String>,
+        pub wheelchair_accessible: Option<WheelchairAccessibility>,
+        pub bikes_allowed: Option<BikeSupport>,
+        pub cars_allowed: Option<CarSupport>,
+        pub safe_duration_factor: Option<f64>,
+        pub safe_duration_offset: Option<f64>,
     }
 
     pub struct StopTime {
-        trip_id: String,
+        pub trip_id: String,
 
         #[cfg(not(feature = "chrono"))]
-        arrival_time: Option<String>,
-        #[cfg(feature = "chrono")]
-        arrival_time: Option<NaiveTime>,
+        pub arrival_time: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub arrival_time: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub arrival_time: Option<NaiveTime>,
 
         #[cfg(not(feature = "chrono"))]
-        departure_time: Option<String>,
-        #[cfg(feature = "chrono")]
-        departure_time: Option<NaiveTime>,
+        pub departure_time: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub departure_time: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub departure_time: Option<NaiveTime>,
 
-        stop_id: Option<String>,
-        location_group_id: Option<String>,
-        location_id: Option<String>,
-        stop_sequence: Option<u32>,
-        stop_headsign: Option<String>,
+        pub stop_id: Option<String>,
+        pub location_group_id: Option<String>,
+        pub location_id: Option<String>,
+        pub stop_sequence: Option<u32>,
+        pub stop_headsign: Option<String>,
 
         #[cfg(not(feature = "chrono"))]
-        start_pickup_drop_off_window: Option<String>,
-        #[cfg(feature = "chrono")]
-        start_pickup_drop_off_window: Option<NaiveTime>,
+        pub start_pickup_drop_off_window: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub start_pickup_drop_off_window: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub start_pickup_drop_off_window: Option<NaiveTime>,
 
         #[cfg(not(feature = "chrono"))]
-        end_pickup_drop_off_window: Option<String>,
-        #[cfg(feature = "chrono")]
-        end_pickup_drop_off_window: Option<NaiveTime>,
+        pub end_pickup_drop_off_window: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub end_pickup_drop_off_window: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub end_pickup_drop_off_window: Option<NaiveTime>,
 
-        pickup_type: Option<PickupType>,
-        drop_off_type: Option<DropoffType>,
-        continuous_pickup: Option<ContinuousPickup>,
-        continuous_drop_off: Option<ContinuousDropoff>,
-        shape_dist_traveled: Option<f64>,
-        timepoint: Option<Timepoint>,
-        pickup_booking_rule_id: Option<String>,
-        drop_off_booking_rule_id: Option<String>,
+        pub pickup_type: Option<PickupType>,
+        pub drop_off_type: Option<DropoffType>,
+        pub continuous_pickup: Option<ContinuousPickup>,
+        pub continuous_drop_off: Option<ContinuousDropoff>,
+        pub shape_dist_traveled: Option<f64>,
+        pub timepoint: Option<Timepoint>,
+        pub pickup_booking_rule_id: Option<String>,
+        pub drop_off_booking_rule_id: Option<String>,
     }
 
     pub struct Calendar {
-        service_id: String,
-        monday: DaySchedule,
-        tuesday: DaySchedule,
-        wednesday: DaySchedule,
-        thursday: DaySchedule,
-        friday: DaySchedule,
-        saturday: DaySchedule,
-        sunday: DaySchedule,
+        pub service_id: String,
+        pub monday: DaySchedule,
+        pub tuesday: DaySchedule,
+        pub wednesday: DaySchedule,
+        pub thursday: DaySchedule,
+        pub friday: DaySchedule,
+        pub saturday: DaySchedule,
+        pub sunday: DaySchedule,
 
         #[cfg(not(feature = "chrono"))]
-        start_date: String,
-        #[cfg(feature = "chrono")]
-        start_date: NaiveDate,
+        pub start_date: String,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_date")]
+        pub start_date: NaiveDate,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub start_date: NaiveDate,
 
         #[cfg(not(feature = "chrono"))]
-        end_date: String,
-        #[cfg(feature = "chrono")]
-        end_date: NaiveDate,
+        pub end_date: String,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_date")]
+        pub end_date: NaiveDate,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub end_date: NaiveDate,
     }
 
     pub struct CalendarDate {
-        service_id: String,
+        pub service_id: String,
 
         #[cfg(not(feature = "chrono"))]
-        date: String,
-        #[cfg(feature = "chrono")]
-        date: NaiveDate,
+        pub date: String,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_date")]
+        pub date: NaiveDate,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub date: NaiveDate,
 
-        exception_type: ExceptionType,
+        pub exception_type: ExceptionType,
     }
 
     pub struct FareAttribute {
-        fare_id: String,
-        price: f64,
-        currency_type: String,
-        payment_method: PaymentMethod,
-        transfers: TransfersLimit,
-        agency_id: Option<String>,
-        transfer_duration: Option<u32>,
+        pub fare_id: String,
+        pub price: f64,
+        pub currency_type: String,
+        pub payment_method: PaymentMethod,
+        pub transfers: TransfersLimit,
+        pub agency_id: Option<String>,
+        pub transfer_duration: Option<u32>,
     }
 
     pub struct FareRule {
-        fare_id: String,
-        route_id: Option<String>,
-        origin_id: Option<String>,
-        destination_id: Option<String>,
-        contains_id: Option<String>,
+        pub fare_id: String,
+        pub route_id: Option<String>,
+        pub origin_id: Option<String>,
+        pub destination_id: Option<String>,
+        pub contains_id: Option<String>,
     }
 
     pub struct Timeframe {
-        timeframe_group_id: String,
+        pub timeframe_group_id: String,
 
         #[cfg(not(feature = "chrono"))]
-        start_time: Option<String>,
-        #[cfg(feature = "chrono")]
-        start_time: Option<NaiveTime>,
+        pub start_time: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub start_time: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub start_time: Option<NaiveTime>,
 
         #[cfg(not(feature = "chrono"))]
-        end_time: Option<String>,
-        #[cfg(feature = "chrono")]
-        end_time: Option<NaiveTime>,
+        pub end_time: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub end_time: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub end_time: Option<NaiveTime>,
 
-        service_id: String,
+        pub service_id: String,
     }
 
     pub struct RiderCategory {
-        rider_category_id: String,
-        rider_category_name: String,
-        is_default_fare_category: Option<bool>,
-        eligibility_url: Option<String>,
+        pub rider_category_id: String,
+        pub rider_category_name: String,
+        pub is_default_fare_category: Option<bool>,
+        pub eligibility_url: Option<String>,
     }
 
     pub struct FareMedia {
-        fare_media_id: String,
-        fare_media_name: Option<String>,
-        fare_media_type: FareMediaType,
+        pub fare_media_id: String,
+        pub fare_media_name: Option<String>,
+        pub fare_media_type: FareMediaType,
     }
 
     pub struct FareProduct {
-        fare_product_id: String,
-        fare_product_name: Option<String>,
-        rider_category_id: Option<String>,
-        fare_media_id: Option<String>,
-        amount: String,
-        currency: String,
+        pub fare_product_id: String,
+        pub fare_product_name: Option<String>,
+        pub rider_category_id: Option<String>,
+        pub fare_media_id: Option<String>,
+        pub amount: String,
+        pub currency: String,
     }
 
     pub struct FareLegRule {
-        leg_group_id: Option<String>,
-        network_id: Option<String>,
-        from_area_id: Option<String>,
-        to_area_id: Option<String>,
-        from_timeframe_group_id: Option<String>,
-        to_timeframe_group_id: Option<String>,
-        fare_product_id: String,
-        rule_priority: Option<u32>,
+        pub leg_group_id: Option<String>,
+        pub network_id: Option<String>,
+        pub from_area_id: Option<String>,
+        pub to_area_id: Option<String>,
+        pub from_timeframe_group_id: Option<String>,
+        pub to_timeframe_group_id: Option<String>,
+        pub fare_product_id: String,
+        pub rule_priority: Option<u32>,
     }
 
     pub struct FareLegJoinRule {
-        from_network_id: String,
-        to_network_id: String,
-        from_stop_id: Option<String>,
-        to_stop_id: Option<String>,
+        pub from_network_id: String,
+        pub to_network_id: String,
+        pub from_stop_id: Option<String>,
+        pub to_stop_id: Option<String>,
     }
 
     pub struct FareTransferRule {
-        from_leg_group_id: Option<String>,
-        to_leg_group_id: Option<String>,
-        transfer_count: Option<i32>,
-        duration_limit: Option<u32>,
-        duration_limit_type: Option<DurationLimitType>,
-        fare_transfer_type: FareTransferType,
-        fare_product_id: Option<String>,
+        pub from_leg_group_id: Option<String>,
+        pub to_leg_group_id: Option<String>,
+        pub transfer_count: Option<i32>,
+        pub duration_limit: Option<u32>,
+        pub duration_limit_type: Option<DurationLimitType>,
+        pub fare_transfer_type: FareTransferType,
+        pub fare_product_id: Option<String>,
     }
 
     pub struct Area {
-        area_id: String,
-        area_name: Option<String>,
+        pub area_id: String,
+        pub area_name: Option<String>,
     }
 
     pub struct StopArea {
-        area_id: String,
-        stop_id: String,
+        pub area_id: String,
+        pub stop_id: String,
     }
 
     pub struct Network {
-        network_id: String,
-        network_name: Option<String>,
+        pub network_id: String,
+        pub network_name: Option<String>,
     }
 
     pub struct RouteNetwork {
-        network_id: String,
-        route_id: String,
+        pub network_id: String,
+        pub route_id: String,
     }
 
     pub struct Shape {
-        shape_id: String,
-        shape_pt_lat: f64,
-        shape_pt_lon: f64,
-        shape_pt_sequence: u32,
-        shape_dist_traveled: f64,
+        pub shape_id: String,
+        pub shape_pt_lat: f64,
+        pub shape_pt_lon: f64,
+        pub shape_pt_sequence: u32,
+        pub shape_dist_traveled: Option<f64>,
     }
 
     pub struct Frequency {
-        trip_id: String,
+        pub trip_id: String,
 
         #[cfg(not(feature = "chrono"))]
-        start_time: String,
-        #[cfg(feature = "chrono")]
-        start_time: NaiveTime,
+        pub start_time: String,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_time")]
+        pub start_time: NaiveTime,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub start_time: NaiveTime,
 
         #[cfg(not(feature = "chrono"))]
-        end_time: String,
-        #[cfg(feature = "chrono")]
-        end_time: NaiveTime,
+        pub end_time: String,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_time")]
+        pub end_time: NaiveTime,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub end_time: NaiveTime,
 
-        headway_secs: u32,
-        exact_times: Option<TripTiming>,
+        pub headway_secs: u32,
+        pub exact_times: Option<TripTiming>,
     }
 
     pub struct Transfer {
-        from_stop_id: Option<String>,
-        to_stop_id: Option<String>,
-        from_route_id: Option<String>,
-        to_route_id: Option<String>,
-        from_trip_id: Option<String>,
-        to_trip_id: Option<String>,
-        transfer_type: TransferType,
-        min_transfer_time: Option<u32>,
+        pub from_stop_id: Option<String>,
+        pub to_stop_id: Option<String>,
+        pub from_route_id: Option<String>,
+        pub to_route_id: Option<String>,
+        pub from_trip_id: Option<String>,
+        pub to_trip_id: Option<String>,
+        pub transfer_type: TransferType,
+        pub min_transfer_time: Option<u32>,
     }
 
     pub struct Pathway {
-        pathway_id: String,
-        from_stop_id: String,
-        to_stop_id: String,
-        pathway_mode: PathwayMode,
-        is_bidirectional: bool,
-        length: Option<f64>,
-        traversal_time: Option<u32>,
-        stair_count: Option<i32>,
-        max_slope: Option<f64>,
-        min_width: Option<f64>,
-        signposted_as: Option<String>,
-        reversed_signposted_as: Option<String>,
+        pub pathway_id: String,
+        pub from_stop_id: String,
+        pub to_stop_id: String,
+        pub pathway_mode: PathwayMode,
+        pub is_bidirectional: bool,
+        pub length: Option<f64>,
+        pub traversal_time: Option<u32>,
+        pub stair_count: Option<i32>,
+        pub max_slope: Option<f64>,
+        pub min_width: Option<f64>,
+        pub signposted_as: Option<String>,
+        pub reversed_signposted_as: Option<String>,
     }
 
     pub struct Level {
-        level_id: String,
-        level_index: f64,
-        level_name: Option<String>,
+        pub level_id: String,
+        pub level_index: f64,
+        pub level_name: Option<String>,
     }
 
     pub struct LocationGroup {
-        location_group_id: String,
-        location_group_name: Option<String>,
+        pub location_group_id: String,
+        pub location_group_name: Option<String>,
     }
 
     pub struct LocationGroupStop {
-        location_group_id: String,
-        stop_id: String,
+        pub location_group_id: String,
+        pub stop_id: String,
     }
 
     // TODO Add GeoJSON parsing to support Location parsing
     pub struct Location {}
 
     pub struct BookingRule {
-        booking_rule_id: String,
-        booking_type: BookingType,
-        prior_notice_duration_min: Option<i32>,
-        prior_notice_duration_max: Option<i32>,
-        prior_notice_last_day: Option<i32>,
+        pub booking_rule_id: String,
+        pub booking_type: BookingType,
+        pub prior_notice_duration_min: Option<i32>,
+        pub prior_notice_duration_max: Option<i32>,
+        pub prior_notice_last_day: Option<i32>,
 
         #[cfg(not(feature = "chrono"))]
-        prior_notice_last_time: Option<String>,
-        #[cfg(feature = "chrono")]
-        prior_notice_last_time: Option<NaiveTime>,
+        pub prior_notice_last_time: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub prior_notice_last_time: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub prior_notice_last_time: Option<NaiveTime>,
 
-        prior_notice_start_day: Option<i32>,
+        pub prior_notice_start_day: Option<i32>,
 
         #[cfg(not(feature = "chrono"))]
-        prior_notice_start_time: Option<String>,
-        #[cfg(feature = "chrono")]
-        prior_notice_start_time: Option<NaiveTime>,
+        pub prior_notice_start_time: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_time")]
+        #[serde(default)]
+        pub prior_notice_start_time: Option<NaiveTime>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub prior_notice_start_time: Option<NaiveTime>,
 
-        prior_notice_service_id: Option<String>,
-        message: Option<String>,
-        pickup_message: Option<String>,
-        drop_off_message: Option<String>,
-        phone_number: Option<String>,
-        info_url: Option<String>,
-        booking_url: Option<String>,
+        pub prior_notice_service_id: Option<String>,
+        pub message: Option<String>,
+        pub pickup_message: Option<String>,
+        pub drop_off_message: Option<String>,
+        pub phone_number: Option<String>,
+        pub info_url: Option<String>,
+        pub booking_url: Option<String>,
     }
 
     pub struct Translation {
-        table_name: String,
-        field_name: String,
-        language: String,
-        translation: String,
-        record_id: Option<String>,
-        record_sub_id: Option<String>,
-        field_value: Option<String>,
+        pub table_name: String,
+        pub field_name: String,
+        pub language: String,
+        pub translation: String,
+        pub record_id: Option<String>,
+        pub record_sub_id: Option<String>,
+        pub field_value: Option<String>,
     }
 
     pub struct FeedInfo {
-        feed_publisher_name: String,
-        feed_publisher_url: String,
-        feed_lang: String,
-        default_lang: Option<String>,
+        pub feed_publisher_name: String,
+        pub feed_publisher_url: String,
+        pub feed_lang: String,
+        pub default_lang: Option<String>,
 
         #[cfg(not(feature = "chrono"))]
-        feed_start_date: Option<String>,
-        #[cfg(feature = "chrono")]
-        feed_start_date: Option<NaiveDate>,
+        pub feed_start_date: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_date")]
+        #[serde(default)]
+        pub feed_start_date: Option<NaiveDate>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub feed_start_date: Option<NaiveDate>,
 
         #[cfg(not(feature = "chrono"))]
-        feed_end_date: Option<String>,
-        #[cfg(feature = "chrono")]
-        feed_end_date: Option<NaiveDate>,
+        pub feed_end_date: Option<String>,
+        #[cfg(all(feature = "chrono", feature = "schedule_parse"))]
+        #[serde(deserialize_with = "deser_opt_date")]
+        #[serde(default)]
+        pub feed_end_date: Option<NaiveDate>,
+        #[cfg(all(feature = "chrono", not(feature = "schedule_parse")))]
+        pub feed_end_date: Option<NaiveDate>,
 
-        feed_version: Option<String>,
-        feed_contact_email: Option<String>,
-        feed_contact_url: Option<String>,
+        pub feed_version: Option<String>,
+        pub feed_contact_email: Option<String>,
+        pub feed_contact_url: Option<String>,
     }
 
     pub struct Attribution {
-        attribution_id: Option<String>,
-        agency_id: Option<String>,
-        route_id: Option<String>,
-        trip_id: Option<String>,
-        organization_name: String,
-        is_producer: Option<bool>,
-        is_operator: Option<bool>,
-        is_authority: Option<bool>,
-        attribution_url: Option<String>,
-        attribution_email: Option<String>,
-        attribution_phone: Option<String>,
+        pub attribution_id: Option<String>,
+        pub agency_id: Option<String>,
+        pub route_id: Option<String>,
+        pub trip_id: Option<String>,
+        pub organization_name: String,
+        pub is_producer: Option<bool>,
+        pub is_operator: Option<bool>,
+        pub is_authority: Option<bool>,
+        pub attribution_url: Option<String>,
+        pub attribution_email: Option<String>,
+        pub attribution_phone: Option<String>,
     }
 );

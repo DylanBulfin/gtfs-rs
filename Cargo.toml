@@ -7,7 +7,7 @@ edition = "2024"
 default = ["full"]
 
 # Include all features
-full = ["schedule", "schedule_parse", "zip", "chrono", "chrono_tz", "realtime"]
+full = ["schedule", "schedule_parse", "zip", "realtime", "chrono", "chrono_tz"] 
 
 # Include all types for realtime and schedule data, without parsing of any kind
 types = ["schedule", "realtime"] 
