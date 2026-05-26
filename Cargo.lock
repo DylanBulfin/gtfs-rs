@@ -455,6 +455,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
 
 [[package]]
+name = "linkme"
+version = "0.3.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e83272d46373fb8decca684579ac3e7c8f3d71d4cc3aa693df8759e260ae41cf"
+dependencies = [
+ "linkme-impl",
+]
+
+[[package]]
+name = "linkme-impl"
+version = "0.3.36"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32d59e20403c7d08fe62b4376edfe5c7fb2ef1e6b1465379686d0f21c8df444b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "log"
 version = "0.4.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -513,10 +533,19 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "csv",
+ "protobuf",
+ "protobuf-codegen",
+ "protobuf-well-known-types",
  "serde",
  "serde_repr",
  "zip",
 ]
+
+[[package]]
+name = "paste-complete"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a4cf96a295ab7f0ec2334fa557745c0e9526595f6ebabbb129563a98dfc1b2a"
 
 [[package]]
 name = "pbkdf2"
@@ -587,6 +616,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "protobuf"
+version = "4.35.0-release"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d05968b8b2df70d7d65ec6bbdb9c9403441d3155c22af783d9eb3c20142313fd"
+dependencies = [
+ "cc",
+ "linkme",
+ "paste-complete",
+ "protobuf-macros",
+]
+
+[[package]]
+name = "protobuf-codegen"
+version = "4.35.0-release"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ccd419b3785dd1692b50c9a9b81b1dbff75ec75a9f5b103224f669d7cc164af"
+
+[[package]]
+name = "protobuf-macros"
+version = "4.35.0-release"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1cfbd93f1e3dd18db139a79c002c9e33eff8749e5ebf4e24250957fd98689be1"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "protobuf-well-known-types"
+version = "4.35.0-release"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f62dfbb4a28682b80fb23924a178965a4e0f028a869f23b78acdb1e047ea431"
+dependencies = [
+ "protobuf",
+ "protobuf-codegen",
 ]
 
 [[package]]
