@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn test_zip() {
-        let path = "test_data/gtfs_subway.zip";
+        let path = "test_data/schedule/gtfs_subway.zip";
 
         let _data = parse_from_zip(ZipArchive::new(File::open(path).unwrap()).unwrap()).unwrap();
     }
