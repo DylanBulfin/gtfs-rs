@@ -1,8 +1,16 @@
+#![cfg(feature = "schedule")]
+
 #[cfg(feature = "schedule_parse")]
 use {
     serde::{Deserialize, Serialize},
     serde_repr::{Deserialize_repr, Serialize_repr},
 };
+
+#[cfg(feature = "chrono")]
+use chrono::{NaiveDate, NaiveTime};
+
+#[cfg(feature = "chrono_tz")]
+use chrono_tz::Tz;
 
 #[cfg(feature = "schedule_parse")]
 macro_rules! derives {
@@ -14,8 +22,18 @@ macro_rules! derives {
     };
 }
 
+#[cfg(not(feature = "schedule_parse"))]
+macro_rules! derives {
+    ($($item:item)+) => {
+        $(
+            #[derive(Debug, Clone)]
+            $item
+        )+
+    };
+}
+
 #[cfg(feature = "schedule_parse")]
-macro_rules! derives_c_enum {
+macro_rules! derives_enum {
     ($($item:item)+) => {
         $(
             #[derive(Serialize_repr, Deserialize_repr, Debug, Clone)]
@@ -25,8 +43,18 @@ macro_rules! derives_c_enum {
     };
 }
 
+#[cfg(not(feature = "schedule_parse"))]
+macro_rules! derives_enum {
+    ($($item:item)+) => {
+        $(
+            #[derive(Debug, Clone)]
+            $item
+        )+
+    };
+}
+
 // Utility types used by GTFS-Schedule entity
-derives_c_enum!(
+derives_enum!(
     pub enum CEMVSupport {
         NoCEMVInfo = 0,
         CEMVSupported = 1,
@@ -180,15 +208,60 @@ derives_c_enum!(
         SameDayBooking = 1,
         PriorDaysBooking = 2,
     }
+
+    pub enum TripDirection {
+        DirectionOne = 0,
+        DirectionTwo = 1,
+    }
 );
 
-// Entities corresponding to GTFS-Schedule data files
+#[derive(Clone, Debug)]
+pub struct GTFSData {
+    agencies: Vec<Agency>,
+    stops: Vec<Stop>,
+    routes: Vec<Route>,
+    trips: Vec<Trip>,
+    stop_times: Vec<StopTime>,
+    calendar: Vec<Calendar>,
+    calendar_dates: Vec<CalendarDate>,
+    fare_attributes: Vec<FareAttribute>,
+    fare_rules: Vec<FareRule>,
+    timeframes: Vec<Timeframe>,
+    rider_categories: Vec<RiderCategory>,
+    fare_media: Vec<FareMedia>,
+    fare_products: Vec<FareProduct>,
+    fare_leg_rules: Vec<FareLegRule>,
+    fare_leg_join_rules: Vec<FareLegJoinRule>,
+    fare_transfer_rules: Vec<FareTransferRule>,
+    areas: Vec<Area>,
+    stop_areas: Vec<StopArea>,
+    networks: Vec<Network>,
+    route_networks: Vec<RouteNetwork>,
+    shapes: Vec<Shape>,
+    frequencies: Vec<Frequency>,
+    transfers: Vec<Transfer>,
+    pathways: Vec<Pathway>,
+    levels: Vec<Level>,
+    location_groups: Vec<LocationGroup>,
+    location_group_stops: Vec<LocationGroupStop>,
+    locations: Vec<Location>,
+    booking_rules: Vec<BookingRule>,
+    translations: Vec<Translation>,
+    feed_info: Vec<FeedInfo>,
+    attributions: Vec<Attribution>,
+}
+
 derives!(
     pub struct Agency {
         agency_id: Option<String>,
         agency_name: String,
         agency_url: String,
-        agency_timezone: String, // TODO parse into better timezone object
+
+        #[cfg(not(feature = "chrono_tz"))]
+        agency_timezone: String,
+        #[cfg(feature = "chrono_tz")]
+        agency_timezone: Tz,
+
         agency_lang: Option<String>,
         agency_phone: Option<String>,
         agency_fare_url: Option<String>,
@@ -208,12 +281,13 @@ derives!(
         stop_url: Option<String>,
         location_type: Option<LocationType>,
         parent_station: Option<String>,
-        stop_timezone: Option<String>, // TODO parse into better timezone object
-        // This field has different behaviors based on location_type, making it difficult to encode
-        // in enum
-        // TODO look into structuring data more, have Stop as an enum with variants based on
-        // location_type
-        wheelchair_boarding: Option<u32>,
+
+        #[cfg(not(feature = "chrono_tz"))]
+        stop_timezone: Option<String>,
+        #[cfg(feature = "chrono_tz")]
+        stop_timezone: Option<Tz>,
+
+        wheelchair_boarding: Option<WheelchairAccessibility>,
         level_id: Option<String>,
         platform_code: Option<String>,
         stop_access: Option<StopAccess>,
@@ -242,9 +316,7 @@ derives!(
         trip_id: String,
         trip_headsign: Option<String>,
         trip_short_name: Option<String>,
-        // direction_id does not assign meaning to either direction (e.g. uptown, downtown), inbound and
-        // outbound are mentioned as examples. This makes it difficult to design a typed enum
-        direction_id: Option<u32>,
+        direction_id: Option<TripDirection>,
         block_id: Option<String>,
         shape_id: Option<String>,
         wheelchair_accessible: Option<WheelchairAccessibility>,
@@ -256,15 +328,33 @@ derives!(
 
     pub struct StopTime {
         trip_id: String,
-        arrival_time: Option<String>,   // TODO Time parsing
-        departure_time: Option<String>, // TODO Time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        arrival_time: Option<String>,
+        #[cfg(feature = "chrono")]
+        arrival_time: Option<NaiveTime>,
+
+        #[cfg(not(feature = "chrono"))]
+        departure_time: Option<String>,
+        #[cfg(feature = "chrono")]
+        departure_time: Option<NaiveTime>,
+
         stop_id: Option<String>,
         location_group_id: Option<String>,
         location_id: Option<String>,
         stop_sequence: Option<u32>,
         stop_headsign: Option<String>,
-        start_pickup_drop_off_window: Option<String>, // TODO Time parsing
-        end_pickup_drop_off_window: Option<String>,   // TODO Time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        start_pickup_drop_off_window: Option<String>,
+        #[cfg(feature = "chrono")]
+        start_pickup_drop_off_window: Option<NaiveTime>,
+
+        #[cfg(not(feature = "chrono"))]
+        end_pickup_drop_off_window: Option<String>,
+        #[cfg(feature = "chrono")]
+        end_pickup_drop_off_window: Option<NaiveTime>,
+
         pickup_type: Option<PickupType>,
         drop_off_type: Option<DropoffType>,
         continuous_pickup: Option<ContinuousPickup>,
@@ -284,13 +374,26 @@ derives!(
         friday: DaySchedule,
         saturday: DaySchedule,
         sunday: DaySchedule,
-        start_date: String, //TODO time parsing
-        end_date: String,   //TODO time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        start_date: String,
+        #[cfg(feature = "chrono")]
+        start_date: NaiveDate,
+
+        #[cfg(not(feature = "chrono"))]
+        end_date: String,
+        #[cfg(feature = "chrono")]
+        end_date: NaiveDate,
     }
 
     pub struct CalendarDate {
         service_id: String,
-        date: String, //TODO time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        date: String,
+        #[cfg(feature = "chrono")]
+        date: NaiveDate,
+
         exception_type: ExceptionType,
     }
 
@@ -314,8 +417,17 @@ derives!(
 
     pub struct Timeframe {
         timeframe_group_id: String,
-        start_time: Option<String>, //TODO time parsing
-        end_time: Option<String>,   //TODO time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        start_time: Option<String>,
+        #[cfg(feature = "chrono")]
+        start_time: Option<NaiveTime>,
+
+        #[cfg(not(feature = "chrono"))]
+        end_time: Option<String>,
+        #[cfg(feature = "chrono")]
+        end_time: Option<NaiveTime>,
+
         service_id: String,
     }
 
@@ -399,8 +511,17 @@ derives!(
 
     pub struct Frequency {
         trip_id: String,
-        start_time: String, // TODO Time parsing
-        end_time: String,   // TODO Time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        start_time: String,
+        #[cfg(feature = "chrono")]
+        start_time: NaiveTime,
+
+        #[cfg(not(feature = "chrono"))]
+        end_time: String,
+        #[cfg(feature = "chrono")]
+        end_time: NaiveTime,
+
         headway_secs: u32,
         exact_times: Option<TripTiming>,
     }
@@ -456,9 +577,19 @@ derives!(
         prior_notice_duration_min: Option<i32>,
         prior_notice_duration_max: Option<i32>,
         prior_notice_last_day: Option<i32>,
-        prior_notice_last_time: Option<String>, //TODO Time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        prior_notice_last_time: Option<String>,
+        #[cfg(feature = "chrono")]
+        prior_notice_last_time: Option<NaiveTime>,
+
         prior_notice_start_day: Option<i32>,
-        prior_notice_start_time: Option<String>, //TODO Time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        prior_notice_start_time: Option<String>,
+        #[cfg(feature = "chrono")]
+        prior_notice_start_time: Option<NaiveTime>,
+
         prior_notice_service_id: Option<String>,
         message: Option<String>,
         pickup_message: Option<String>,
@@ -483,8 +614,17 @@ derives!(
         feed_publisher_url: String,
         feed_lang: String,
         default_lang: Option<String>,
-        feed_start_date: Option<String>, // TODO Time parsing
-        feed_end_date: Option<String>,   // TODO Time parsing
+
+        #[cfg(not(feature = "chrono"))]
+        feed_start_date: Option<String>,
+        #[cfg(feature = "chrono")]
+        feed_start_date: Option<NaiveDate>,
+
+        #[cfg(not(feature = "chrono"))]
+        feed_end_date: Option<String>,
+        #[cfg(feature = "chrono")]
+        feed_end_date: Option<NaiveDate>,
+
         feed_version: Option<String>,
         feed_contact_email: Option<String>,
         feed_contact_url: Option<String>,
