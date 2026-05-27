@@ -1,4 +1,19 @@
+use gtfs_macros::gtfs_realtime_model;
+use protobuf::Message;
+
+use crate::realtime::{models::FeedMessage, parse::protos::gtfs::ReplacementStop};
+
 pub(crate) mod protos {
-    include!(concat!(env!("OUT_DIR"), "/protobuf_generated/generated.rs"));
+    include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
 }
 
+#[gtfs_realtime_model(protos::gtfs::ReplacementStop)]
+pub struct ReplacementStop2 {
+    pub travel_time_to_stop: Option<i32>,
+    pub stop_id: Option<String>,
+}
+
+fn test(stop: protos::gtfs::ReplacementStop) {
+    let a: u32 = 2u32.try_into().unwrap();
+    let a: ReplacementStop2 = stop.try_into().unwrap();
+}

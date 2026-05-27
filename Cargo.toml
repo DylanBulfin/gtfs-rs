@@ -7,7 +7,7 @@ edition = "2024"
 default = ["full"]
 
 # Include all features
-full = ["schedule", "schedule_parse", "zip", "chrono", "chrono_tz", "realtime", "realtime_parse"] 
+full = ["schedule", "schedule_parse", "zip", "chrono", "chrono_tz", "realtime", "realtime_parse", "realtime_mta"] 
 
 # Include all types for realtime and schedule data, without parsing of any kind
 types = ["schedule", "realtime"] 
@@ -26,7 +26,7 @@ chrono_tz = ["dep:chrono-tz", "chrono"]
 
 # Include realtime types only
 realtime = []
-realtime_parse = ["dep:protobuf", "dep:protobuf-well-known-types", "realtime"]
+realtime_parse = ["dep:protobuf", "realtime"]
 realtime_mta = ["realtime"]
 
 [dependencies]
@@ -39,9 +39,9 @@ zip = { version = "8.6.0", optional = true }
 chrono = { version = "0.4.44", optional = true, features = ["serde"] }
 chrono-tz = { version = "0.10.4", optional = true, features = ["serde"] }
 
-protobuf = { version = "4.35.0-release", optional = true }
-protobuf-well-known-types = { version = "4.35.0-release", optional = true }
+protobuf = { version = "3.7.2", optional = true }
+
+gtfs-macros = { path = "gtfs-macros" }
 
 [build-dependencies]
-protobuf-codegen = "4.35.0-release"
-protobuf-well-known-types = "4.35.0-release"
+protobuf-codegen = "3.7.2"

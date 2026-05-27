@@ -3,18 +3,14 @@ use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 #[cfg(feature = "chrono_tz")]
 use chrono_tz::Tz;
 
-use crate::realtime;
-
 #[cfg(feature = "realtime_parse")]
 use {
-    serde::{Serialize, Deserialize},
-    serde_repr::{Serialize_repr, Deserialize_repr}
+    serde::{Deserialize, Serialize},
+    serde_repr::{Deserialize_repr, Serialize_repr},
 };
 
-pub struct FeedMessage {
-    header: FeedHeader,
-    entities: Vec<FeedEntity>,
-}
+#[cfg(feature = "realtime_mta")]
+use crate::realtime::models_mta::{NyctFeedHeader, NyctStopTimeUpdate, NyctTripDescriptor};
 
 #[cfg(feature = "realtime_parse")]
 macro_rules! derives {
@@ -60,7 +56,7 @@ macro_rules! derives_enum {
 derives_enum!(
     pub enum Incrementality {
         FullDataset = 0,
-        Differential = 1
+        Differential = 1,
     }
 
     pub enum DropoffPickupType {
@@ -75,11 +71,11 @@ derives_enum!(
         ManySeatsAvailable = 1,
         FewSeatsAvailable = 2,
         StandingRoomOnly = 3,
-        CrushedStandingRoomOnly =4,
+        CrushedStandingRoomOnly = 4,
         Full = 5,
         NotAcceptingPassengers = 6,
         NoDataAvailable = 7,
-        NotBoardable = 8
+        NotBoardable = 8,
     }
 
     pub enum ScheduleRelationship {
@@ -96,7 +92,7 @@ derives_enum!(
     pub enum VehicleStopStatus {
         IncomingAt = 0,
         StoppedAt = 1,
-        InTransitTo = 2
+        InTransitTo = 2,
     }
 
     pub enum TripDirection {
@@ -122,7 +118,7 @@ derives_enum!(
         RunningSmoothly = 1,
         StopAndGo = 2,
         Congestion = 3,
-        SevereCongestion = 4
+        SevereCongestion = 4,
     }
 
     pub enum Cause {
@@ -137,7 +133,7 @@ derives_enum!(
         Maintenance = 9,
         Construction = 10,
         PoliceActivity = 11,
-        MedicalEmergency = 12
+        MedicalEmergency = 12,
     }
 
     pub enum Effect {
@@ -151,307 +147,336 @@ derives_enum!(
         UnknownEffect = 8,
         StopMoved = 9,
         NoEffect = 10,
-        AccessibilityIssue = 11
+        AccessibilityIssue = 11,
     }
 
     pub enum SeverityLevel {
         Unknown = 1,
         Info = 2,
         Warning = 3,
-        Severe = 4
+        Severe = 4,
     }
 );
 
 derives!(
+    pub struct FeedMessage {
+        header: FeedHeader,
+        entities: Vec<FeedEntity>,
+    }
+
     pub struct FeedHeader {
-        gtfs_realtime_version: String,
-        incrementality: Option<Incrementality>,
+        pub gtfs_realtime_version: String,
+        pub incrementality: Option<Incrementality>,
 
         #[cfg(not(feature = "chrono"))]
-        timestamp: Option<u64>,
+        pub timestamp: Option<u64>,
         #[cfg(feature = "chrono")]
-        timestamp: Option<NaiveDateTime>,
+        pub timestamp: Option<NaiveDateTime>,
 
-        feed_version: Option<String>,
+        pub feed_version: Option<String>,
+
+        #[cfg(feature = "realtime_mta")]
+        pub nyct_feed_header: Option<NyctFeedHeader>,
     }
 
     pub struct FeedEntity {
-        id: String,
-        is_deleted: bool,
-        trip_update: Option<TripUpdate>,
-        vehicle: Option<VehiclePosition>,
-        alert: Option<Alert>,
-        shape: Option<Shape>,
-        stop: Option<Stop>,
-        trip_modifications: Option<TripModifications>,
+        pub id: String,
+        pub is_deleted: bool,
+        pub trip_update: Option<TripUpdate>,
+        pub vehicle: Option<VehiclePosition>,
+        pub alert: Option<Alert>,
+        pub shape: Option<Shape>,
+        pub stop: Option<Stop>,
+        pub trip_modifications: Option<TripModifications>,
     }
 
     pub struct StopTimeEvent {
-        delay: Option<i32>,
+        pub delay: Option<i32>,
 
         #[cfg(not(feature = "chrono"))]
-        time: Option<i64>,
+        pub time: Option<i64>,
         #[cfg(feature = "chrono")]
-        time: Option<NaiveDateTime>,
+        pub time: Option<NaiveDateTime>,
 
-        uncertainty: Option<i32>,
+        pub uncertainty: Option<i32>,
 
         #[cfg(not(feature = "chrono"))]
-        scheduled_time: Option<i64>,
+        pub scheduled_time: Option<i64>,
         #[cfg(feature = "chrono")]
-        scheduled_time: Option<NaiveDateTime>,
+        pub scheduled_time: Option<NaiveDateTime>,
     }
 
     pub struct StopTimeProperties {
-        assigned_stop_id: Option<String>,
-        stop_headsign: Option<String>,
-        pickup_type: Option<DropoffPickupType>,
-        dropoff_type: Option<DropoffPickupType>,
+        pub assigned_stop_id: Option<String>,
+        pub stop_headsign: Option<String>,
+        pub pickup_type: Option<DropoffPickupType>,
+        pub dropoff_type: Option<DropoffPickupType>,
     }
 
     pub struct StopTimeUpdate {
-        stop_sequence: Option<u32>,
-        stop_id: Option<String>,
-        arrival: Option<StopTimeEvent>,
-        departure: Option<StopTimeEvent>,
-        departure_occupancy_status: Option<OccupancyStatus>,
-        schedule_relationship: ScheduleRelationship,
-        stop_time_properties: Option<StopTimeProperties>,
+        pub stop_sequence: Option<u32>,
+        pub stop_id: Option<String>,
+        pub arrival: Option<StopTimeEvent>,
+        pub departure: Option<StopTimeEvent>,
+        pub departure_occupancy_status: Option<OccupancyStatus>,
+        pub schedule_relationship: ScheduleRelationship,
+        pub stop_time_properties: Option<StopTimeProperties>,
+
+        #[cfg(feature = "realtime_mta")]
+        pub nyct_stop_time_update: Option<NyctStopTimeUpdate>,
     }
 
     pub struct TripProperties {
-        trip_id: Option<String>,
+        pub trip_id: Option<String>,
 
         #[cfg(not(feature = "chrono"))]
-        start_date: Option<String>,
+        pub start_date: Option<String>,
         #[cfg(feature = "chrono")]
-        start_date: Option<NaiveDate>,
+        pub start_date: Option<NaiveDate>,
 
         #[cfg(not(feature = "chrono"))]
-        start_time: Option<String>,
+        pub start_time: Option<String>,
         #[cfg(feature = "chrono")]
-        start_time: Option<NaiveTime>,
+        pub start_time: Option<NaiveTime>,
 
-        shape_id: Option<String>,
-        trip_headsign: Option<String>,
-        trip_short_name: Option<String>,
+        pub shape_id: Option<String>,
+        pub trip_headsign: Option<String>,
+        pub trip_short_name: Option<String>,
     }
 
     pub struct TripUpdate {
-        trip: TripDescriptor,
-        vehicle: Option<VehicleDescriptor>,
-        stop_time_updates: Vec<StopTimeUpdate>,
+        pub trip: TripDescriptor,
+        pub vehicle: Option<VehicleDescriptor>,
+        pub stop_time_updates: Vec<StopTimeUpdate>,
 
         #[cfg(not(feature = "chrono"))]
-        timestamp: Option<u64>,
+        pub timestamp: Option<u64>,
         #[cfg(feature = "chrono")]
-        timestamp: Option<NaiveDateTime>,
+        pub timestamp: Option<NaiveDateTime>,
 
-        delay: Option<i32>,
-        trip_properties: Option<TripProperties>,
+        pub delay: Option<i32>,
+        pub trip_properties: Option<TripProperties>,
     }
 
     pub struct CarriageDetails {
-        id: Option<String>,
-        label: Option<String>,
-        occupancy_status: OccupancyStatus,
-        occupancy_percentage: i32,
-        carriage_sequence: Option<i32>,
+        pub id: Option<String>,
+        pub label: Option<String>,
+        pub occupancy_status: OccupancyStatus,
+        pub occupancy_percentage: i32,
+        pub carriage_sequence: Option<i32>,
     }
 
     pub struct VehiclePosition {
-        trip: Option<TripDescriptor>,
-        vehicle: Option<VehicleDescriptor>,
-        position: Option<Position>,
-        current_stop_sequence: Option<u32>,
-        stop_id: Option<String>,
-        current_status: VehicleStopStatus,
+        pub trip: Option<TripDescriptor>,
+        pub vehicle: Option<VehicleDescriptor>,
+        pub position: Option<Position>,
+        pub current_stop_sequence: Option<u32>,
+        pub stop_id: Option<String>,
+        pub current_status: VehicleStopStatus,
 
         #[cfg(not(feature = "chrono"))]
-        timestamp: Option<u64>,
+        pub timestamp: Option<u64>,
         #[cfg(feature = "chrono")]
-        timestamp: Option<NaiveDateTime>,
+        pub timestamp: Option<NaiveDateTime>,
 
-        congestion_level: Option<CongestionLevel>,
-        occupancy_status: Option<OccupancyStatus>,
-        occupancy_percentage: Option<u32>,
-        multi_carriage_details: Vec<CarriageDetails>,
+        pub congestion_level: Option<CongestionLevel>,
+        pub occupancy_status: Option<OccupancyStatus>,
+        pub occupancy_percentage: Option<u32>,
+        pub multi_carriage_details: Vec<CarriageDetails>,
     }
 
     pub struct Alert {
-        active_periods: Vec<TimeRange>,
-        informed_entities: Vec<EntitySelector>,
-        cause: Cause,
-        effect: Effect,
-        url: Option<TranslatedString>,
-        header_text: Option<TranslatedString>,
-        description_text: Option<TranslatedString>,
-        tts_header_text: Option<TranslatedString>,
-        tts_description_text: Option<TranslatedString>,
-        severity_level: SeverityLevel,
-        image: Option<TranslatedImage>,
-        image_alertnative_text: Option<TranslatedString>,
-        cause_detail: Option<TranslatedString>,
-        effect_detail: Option<TranslatedString>,
+        pub active_periods: Vec<TimeRange>,
+        pub informed_entities: Vec<EntitySelector>,
+        pub cause: Cause,
+        pub effect: Effect,
+        pub url: Option<TranslatedString>,
+        pub header_text: Option<TranslatedString>,
+        pub description_text: Option<TranslatedString>,
+        pub tts_header_text: Option<TranslatedString>,
+        pub tts_description_text: Option<TranslatedString>,
+        pub severity_level: SeverityLevel,
+        pub image: Option<TranslatedImage>,
+        pub image_alertnative_text: Option<TranslatedString>,
+        pub cause_detail: Option<TranslatedString>,
+        pub effect_detail: Option<TranslatedString>,
     }
 
     pub struct TimeRange {
         #[cfg(not(feature = "chrono"))]
-        start: Option<u64>,
+        pub start: Option<u64>,
         #[cfg(feature = "chrono")]
-        start: Option<NaiveDateTime>,
+        pub start: Option<NaiveDateTime>,
 
         #[cfg(not(feature = "chrono"))]
-        end: Option<u64>,
+        pub end: Option<u64>,
         #[cfg(feature = "chrono")]
-        end: Option<NaiveDateTime>,
+        pub end: Option<NaiveDateTime>,
     }
 
     pub struct Position {
-        latitude: f64,
-        longitude: f64,
-        bearing: Option<f64>,
-        odometer: Option<f64>,
-        speed: Option<f64>,
+        pub latitude: f64,
+        pub longitude: f64,
+        pub bearing: Option<f64>,
+        pub odometer: Option<f64>,
+        pub speed: Option<f64>,
     }
 
     pub struct ModifiedTripSelector {
-        modifications_id: Option<String>,
-        affected_trip_id: Option<String>,
+        pub modifications_id: Option<String>,
+        pub affected_trip_id: Option<String>,
 
         #[cfg(not(feature = "chrono"))]
-        start_time: Option<String>,
+        pub start_time: Option<String>,
         #[cfg(feature = "chrono")]
-        start_time: Option<NaiveTime>,
+        pub start_time: Option<NaiveTime>,
 
         #[cfg(not(feature = "chrono"))]
-        start_date: Option<String>,
+        pub start_date: Option<String>,
         #[cfg(feature = "chrono")]
-        start_date: Option<NaiveDate>,
+        pub start_date: Option<NaiveDate>,
     }
 
     pub struct TripDescriptor {
-        trip_id: Option<String>,
-        route_id: Option<String>,
-        direction_id: Option<TripDirection>,
+        pub trip_id: Option<String>,
+        pub route_id: Option<String>,
+        pub direction_id: Option<TripDirection>,
 
         #[cfg(not(feature = "chrono"))]
-        start_time: Option<String>,
+        pub start_time: Option<String>,
         #[cfg(feature = "chrono")]
-        start_time: Option<NaiveTime>,
+        pub start_time: Option<NaiveTime>,
 
         #[cfg(not(feature = "chrono"))]
-        start_date: Option<String>,
+        pub start_date: Option<String>,
         #[cfg(feature = "chrono")]
-        start_date: Option<NaiveDate>,
+        pub start_date: Option<NaiveDate>,
 
-        schedule_relationship: Option<ScheduleRelationship>,
-        modified_trip: Option<ModifiedTripSelector>,
+        pub schedule_relationship: Option<ScheduleRelationship>,
+        pub modified_trip: Option<ModifiedTripSelector>,
+
+        #[cfg(feature = "realtime_mta")]
+        pub nyct_trip_descriptor: Option<NyctTripDescriptor>,
     }
 
     pub struct VehicleDescriptor {
-        id: Option<String>,
-        label: Option<String>,
-        license_plate: Option<String>,
-        wheelchair_accessible: Option<WheelchairAccessOverride>,
+        pub id: Option<String>,
+        pub label: Option<String>,
+        pub license_plate: Option<String>,
+        pub wheelchair_accessible: Option<WheelchairAccessOverride>,
     }
 
     pub struct EntitySelector {
-        agency_id: Option<String>,
-        route_id: Option<String>,
-        route_type: Option<i32>,
-        trip: Option<TripDescriptor>,
-        stop_id: Option<String>,
-        direction_id: Option<TripDirection>,
+        pub agency_id: Option<String>,
+        pub route_id: Option<String>,
+        pub route_type: Option<i32>,
+        pub trip: Option<TripDescriptor>,
+        pub stop_id: Option<String>,
+        pub direction_id: Option<TripDirection>,
     }
 
     pub struct Translation {
-        text: String,
-        language: Option<String>,
+        pub text: String,
+        pub language: Option<String>,
     }
 
     pub struct TranslatedString {
-        translations: Vec<Translation>,
+        pub translations: Vec<Translation>,
     }
 
     pub struct LocalizedImage {
-        url: String,
-        media_type: String,
-        language: Option<String>,
+        pub url: String,
+        pub media_type: String,
+        pub language: Option<String>,
     }
 
     pub struct TranslatedImage {
-        localized_images: Vec<LocalizedImage>,
+        pub localized_images: Vec<LocalizedImage>,
     }
 
     pub struct Shape {
-        shape_id: Option<String>,
-        encoded_polyline: Option<String>,
+        pub shape_id: Option<String>,
+        pub encoded_polyline: Option<String>,
     }
 
     pub struct Stop {
-        stop_id: Option<String>,
-        stop_code: Option<TranslatedString>,
-        stop_name: Option<TranslatedString>,
-        tts_stop_name: Option<TranslatedString>,
-        stop_desc: Option<TranslatedString>,
-        stop_lat: Option<f64>,
-        stop_lon: Option<f64>,
-        zone_id: Option<String>,
-        stop_url: Option<TranslatedString>,
-        parent_station: Option<String>,
+        pub stop_id: Option<String>,
+        pub stop_code: Option<TranslatedString>,
+        pub stop_name: Option<TranslatedString>,
+        pub tts_stop_name: Option<TranslatedString>,
+        pub stop_desc: Option<TranslatedString>,
+        pub stop_lat: Option<f64>,
+        pub stop_lon: Option<f64>,
+        pub zone_id: Option<String>,
+        pub stop_url: Option<TranslatedString>,
+        pub parent_station: Option<String>,
 
         #[cfg(not(feature = "chrono_tz"))]
-        stop_timezone: String,
+        pub stop_timezone: String,
         #[cfg(feature = "chrono_tz")]
-        stop_timezone: Tz,
+        pub stop_timezone: Tz,
 
-        wheelchair_boarding: WheelchairBoarding,
-        level_id: Option<String>,
-        platform_code: Option<TranslatedString>,
+        pub wheelchair_boarding: WheelchairBoarding,
+        pub level_id: Option<String>,
+        pub platform_code: Option<TranslatedString>,
     }
 
     pub struct Modification {
-        start_stop_selector: Option<StopSelector>,
-        end_stop_selector: Option<StopSelector>,
-        propagated_modification_delay: i32,
-        replacement_stops: Vec<ReplacementStop>,
-        service_alert_id: Option<String>,
+        pub start_stop_selector: Option<StopSelector>,
+        pub end_stop_selector: Option<StopSelector>,
+        pub propagated_modification_delay: i32,
+        pub replacement_stops: Vec<ReplacementStop>,
+        pub service_alert_id: Option<String>,
 
         #[cfg(not(feature = "chrono"))]
-        last_modified_time: Option<u64>,
+        pub last_modified_time: Option<u64>,
         #[cfg(feature = "chrono")]
-        last_modified_time: Option<NaiveDateTime>,
+        pub last_modified_time: Option<NaiveDateTime>,
     }
 
     pub struct SelectedTrips {
-        trip_ids: Vec<String>,
-        shape_id: Option<String>,
+        pub trip_ids: Vec<String>,
+        pub shape_id: Option<String>,
     }
 
     pub struct TripModifications {
-        selected_trips: Vec<SelectedTrips>,
+        pub selected_trips: Vec<SelectedTrips>,
 
         #[cfg(not(feature = "chrono"))]
-        start_times: Vec<String>,
+        pub start_times: Vec<String>,
         #[cfg(feature = "chrono")]
-        start_times: Vec<NaiveTime>,
+        pub start_times: Vec<NaiveTime>,
 
         #[cfg(not(feature = "chrono"))]
-        service_dates: Vec<String>,
+        pub service_dates: Vec<String>,
         #[cfg(feature = "chrono")]
-        service_dates: Vec<NaiveDate>,
+        pub service_dates: Vec<NaiveDate>,
 
-        modifications: Vec<Modification>,
+        pub modifications: Vec<Modification>,
     }
 
     pub struct StopSelector {
-        stop_sequence: Option<u32>,
-        stop_id: Option<String>,
+        pub stop_sequence: Option<u32>,
+        pub stop_id: Option<String>,
     }
 
     pub struct ReplacementStop {
-        travel_time_to_stop: Option<i32>,
-        stop_id: Option<String>,
+        pub travel_time_to_stop: Option<i32>,
+        pub stop_id: Option<String>,
     }
 );
+
+impl From<crate::realtime::parse::protos::gtfs::ReplacementStop> for ReplacementStop {
+    fn from(value: crate::realtime::parse::protos::gtfs::ReplacementStop) -> Self {
+        let crate::realtime::parse::protos::gtfs::ReplacementStop {
+            travel_time_to_stop,
+            stop_id,
+            ..
+        } = value;
+
+        Self {
+            travel_time_to_stop,
+            stop_id,
+        }
+    }
+}

@@ -6,6 +6,7 @@ pub enum Error {
     CsvError(csv::Error),
     #[cfg(feature = "zip")]
     ZipError(zip::result::ZipError),
+    String(String),
 }
 
 #[cfg(feature = "schedule_parse")]
@@ -19,6 +20,12 @@ impl From<csv::Error> for Error {
 impl From<zip::result::ZipError> for Error {
     fn from(value: zip::result::ZipError) -> Self {
         Self::ZipError(value)
+    }
+}
+
+impl From<String> for Error {
+    fn from(value: String) -> Self {
+        Self::String(value)
     }
 }
 
