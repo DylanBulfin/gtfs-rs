@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{convert::Infallible, fmt::Display};
 
 #[derive(Debug)]
 pub enum Error {
@@ -34,6 +34,12 @@ impl Display for Error {
         f.write_fmt(format_args!("Testing"))?;
 
         Ok(())
+    }
+}
+
+impl From<Infallible> for Error {
+    fn from(_value: Infallible) -> Self {
+        Self::String("Infallible".into())
     }
 }
 
