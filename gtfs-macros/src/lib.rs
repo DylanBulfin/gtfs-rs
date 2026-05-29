@@ -265,9 +265,21 @@ impl ToTokens for Variable {
                 feature,
                 convert_fn,
                 ..
-            })) => {
-                unimplemented!()
-            }
+            })) => match self.ty {
+                VariableType::Passthrough => quote! {
+                    #[cfg(not(feature = #feature))]
+                    #name,
+                    #[cfg(feature = #feature)]
+                    #name: #convert_fn(#name)?
+                },
+                VariableType::Required => quote! {
+                    #[cfg(not(feature = #feature))]
+                    #name: #name.ok_or(String::from("Required field not provided"))?,
+                    #[cfg(feature = #feature)]
+                    #name: #convert_fn(#name)?.ok_or(String::from("Required field not provided"))?
+                },
+                _ => panic!("Unsupported type for alt feature clause"),
+            },
         };
 
         tokens.append_all(new_tokens);

@@ -1,5 +1,7 @@
 #![allow(non_camel_case_types)]
 
+use std::str::FromStr;
+
 #[cfg(feature = "chrono")]
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 #[cfg(feature = "chrono_tz")]
@@ -131,51 +133,119 @@ pub enum SeverityLevel {
     SEVERE = 4,
 }
 
-pub fn parse_required<T, U>(input: Option<T>) -> Result<U, crate::error::Error>
-where
-    U: TryFrom<T>,
-    crate::error::Error: From<U::Error>,
-{
-    match input {
-        None => Err(String::from("Required variable does not exist"))?,
-        Some(field) => Ok(field
-            .try_into()
-            .map_err(|_| String::from("Unable to convert required variable to required type"))?),
-    }
-}
-
-pub fn parse_mf<T, U>(mut input: MessageField<T>) -> Result<Option<U>, crate::error::Error>
-where
-    U: TryFrom<T>,
-    crate::error::Error: From<U::Error>,
-{
-    match input.take() {
+fn parse_dt_u64(
+    value: Option<u64>,
+) -> Result<Option<chrono::DateTime<chrono::Utc>>, crate::error::Error> {
+    match value {
+        Some(n) => Ok(chrono::DateTime::<chrono::Utc>::from_timestamp(
+            n.try_into()
+                .map_err(|_| String::from("Unable to convert timestamp to i64"))?,
+            0,
+        )),
         None => Ok(None),
-        Some(field) => Ok(Some(field.try_into().map_err(|_| {
-            String::from("Unable to convert message field variable into necessary type")
-        })?)),
     }
 }
 
-pub fn parse_mf_req<T, U>(mut input: MessageField<T>) -> Result<U, crate::error::Error>
-where
-    U: TryFrom<T>,
-    crate::error::Error: From<U::Error>,
-{
-    match input.take() {
-        None => Err(String::from("Unable to parse required message field").into()),
-        Some(field) => Ok(field.try_into()?),
+fn parse_dt_i64(
+    value: Option<i64>,
+) -> Result<Option<chrono::DateTime<chrono::Utc>>, crate::error::Error> {
+    match value {
+        Some(n) => Ok(chrono::DateTime::<chrono::Utc>::from_timestamp(n, 0)),
+        None => Ok(None),
     }
 }
 
-pub fn parse_vec<T, U>(input: Vec<T>) -> Result<Vec<U>, crate::error::Error>
-where
-    U: TryFrom<T>,
-    crate::error::Error: From<U::Error>,
-{
-    let b: Result<Vec<U>, U::Error> = input.into_iter().map(|t| U::try_from(t)).collect();
+fn parse_nt(value: Option<String>) -> Result<Option<chrono::NaiveTime>, crate::error::Error> {
+    match value {
+        Some(s) => {
+            let hour: u32 = s[0..2]
+                .parse()
+                .map_err(|_| String::from("Unable to parse hour"))?;
+            let min: u32 = s[3..5]
+                .parse()
+                .map_err(|_| String::from("Unable to parse minute"))?;
+            let sec: u32 = s[6..8]
+                .parse()
+                .map_err(|_| String::from("Unable to parse second"))?;
 
-    Ok(b?)
+            Ok(NaiveTime::from_hms_opt(hour, min, sec))
+        }
+        None => Ok(None),
+    }
+}
+
+fn parse_nd(value: Option<String>) -> Result<Option<chrono::NaiveDate>, crate::error::Error> {
+    match value {
+        Some(s) => {
+            let year: i32 = s[0..4]
+                .parse()
+                .map_err(|_| String::from("Unable to parse year"))?;
+            let month: u32 = s[4..6]
+                .parse()
+                .map_err(|_| String::from("Unable to parse month"))?;
+            let day: u32 = s[6..8]
+                .parse()
+                .map_err(|_| String::from("Unable to parse day"))?;
+
+            Ok(NaiveDate::from_ymd_opt(year, month, day))
+        }
+        None => Ok(None),
+    }
+}
+
+fn parse_nds(value: Vec<String>) -> Result<Vec<chrono::NaiveDate>, crate::error::Error> {
+    let mut res = Vec::new();
+
+    for s in value {
+        let year: i32 = s[0..4]
+            .parse()
+            .map_err(|_| String::from("Unable to parse year"))?;
+        let month: u32 = s[4..6]
+            .parse()
+            .map_err(|_| String::from("Unable to parse month"))?;
+        let day: u32 = s[6..8]
+            .parse()
+            .map_err(|_| String::from("Unable to parse day"))?;
+
+        res.push(
+            NaiveDate::from_ymd_opt(year, month, day)
+                .ok_or(String::from("Unable to parse NaiveDate in list"))?,
+        );
+    }
+
+    Ok(res)
+}
+
+fn parse_nts(value: Vec<String>) -> Result<Vec<chrono::NaiveTime>, crate::error::Error> {
+    let mut res = Vec::new();
+
+    for s in value {
+        let hour: u32 = s[0..2]
+            .parse()
+            .map_err(|_| String::from("Unable to parse hour"))?;
+        let min: u32 = s[3..5]
+            .parse()
+            .map_err(|_| String::from("Unable to parse min"))?;
+        let sec: u32 = s[6..8]
+            .parse()
+            .map_err(|_| String::from("Unable to parse sec"))?;
+
+        res.push(
+            NaiveTime::from_hms_opt(hour, min, sec)
+                .ok_or(String::from("Unable to parse NaiveTime in list"))?,
+        );
+    }
+
+    Ok(res)
+}
+
+fn parse_tz(value: Option<String>) -> Result<Option<chrono_tz::Tz>, crate::error::Error> {
+    match value {
+        Some(s) => Ok(Some(
+            chrono_tz::Tz::from_str(&s).map_err(|_| String::from("Unable to parse timezone"))?,
+        )),
+        None => Ok(None),
+    }
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::FeedMessage)]
@@ -192,9 +262,8 @@ pub struct FeedHeader {
     pub gtfs_realtime_version: String,
     #[gtfs(Enum)]
     pub incrementality: Option<Incrementality>,
-
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub timestamp: Option<u64>,
-
     pub feed_version: Option<String>,
     #[gtfs(mf, "realtime_mta")]
     pub nyct_feed_header: Option<NyctFeedHeader>,
@@ -223,11 +292,10 @@ pub struct FeedEntity {
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::trip_update::StopTimeEvent)]
 pub struct StopTimeEvent {
     pub delay: Option<i32>,
-
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_i64)]
     pub time: Option<i64>,
-
     pub uncertainty: Option<i32>,
-
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_i64)]
     pub scheduled_time: Option<i64>,
 }
 
@@ -264,11 +332,10 @@ pub struct StopTimeUpdate {
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::trip_update::TripProperties)]
 pub struct TripProperties {
     pub trip_id: Option<String>,
-
+    #[gtfs("chrono", Option<chrono::NaiveDate>, parse_nd)]
     pub start_date: Option<String>,
-
+    #[gtfs("chrono", Option<chrono::NaiveTime>, parse_nt)]
     pub start_time: Option<String>,
-
     pub shape_id: Option<String>,
     pub trip_headsign: Option<String>,
     pub trip_short_name: Option<String>,
@@ -282,9 +349,8 @@ pub struct TripUpdate {
     pub vehicle: Option<VehicleDescriptor>,
     #[gtfs(vec)]
     pub stop_time_update: Vec<StopTimeUpdate>,
-
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub timestamp: Option<u64>,
-
     pub delay: Option<i32>,
     #[gtfs(mf)]
     pub trip_properties: Option<TripProperties>,
@@ -313,9 +379,8 @@ pub struct VehiclePosition {
     pub stop_id: Option<String>,
     #[gtfs(enumreq)]
     pub current_status: VehicleStopStatus,
-
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub timestamp: Option<u64>,
-
     #[gtfs(mf)]
     pub congestion_level: Option<CongestionLevel>,
     #[gtfs(Enum)]
@@ -359,8 +424,9 @@ pub struct Alert {
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TimeRange)]
 pub struct TimeRange {
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub start: Option<u64>,
-
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub end: Option<u64>,
 }
 
@@ -379,9 +445,9 @@ pub struct Position {
 pub struct ModifiedTripSelector {
     pub modifications_id: Option<String>,
     pub affected_trip_id: Option<String>,
-
+    #[gtfs("chrono", Option<chrono::NaiveTime>, parse_nt)]
     pub start_time: Option<String>,
-
+    #[gtfs("chrono", Option<chrono::NaiveDate>, parse_nd)]
     pub start_date: Option<String>,
 }
 
@@ -390,11 +456,10 @@ pub struct TripDescriptor {
     pub trip_id: Option<String>,
     pub route_id: Option<String>,
     pub direction_id: Option<u32>,
-
+    #[gtfs("chrono", Option<chrono::NaiveTime>, parse_nt)]
     pub start_time: Option<String>,
-
+    #[gtfs("chrono", Option<chrono::NaiveDate>, parse_nd)]
     pub start_date: Option<String>,
-
     #[gtfs(mf)]
     pub schedule_relationship: Option<TripScheduleRelationship>,
     #[gtfs(mf)]
@@ -474,10 +539,8 @@ pub struct Stop {
     #[gtfs(mf)]
     pub stop_url: Option<TranslatedString>,
     pub parent_station: Option<String>,
-
-    #[gtfs(required)]
+    #[gtfs(required, "chrono_tz", chrono_tz::Tz, parse_tz)]
     pub stop_timezone: String,
-
     #[gtfs(enumreq)]
     pub wheelchair_boarding: WheelchairBoarding,
     pub level_id: Option<String>,
@@ -496,7 +559,7 @@ pub struct Modification {
     #[gtfs(vec)]
     pub replacement_stops: Vec<ReplacementStop>,
     pub service_alert_id: Option<String>,
-
+    #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub last_modified_time: Option<u64>,
 }
 
@@ -511,13 +574,10 @@ pub struct SelectedTrips {
 pub struct TripModifications {
     #[gtfs(vec)]
     pub selected_trips: Vec<SelectedTrips>,
-
-    #[gtfs(vec)]
+    #[gtfs("chrono", Vec<chrono::NaiveTime>, parse_nts)]
     pub start_times: Vec<String>,
-
-    #[gtfs(vec)]
+    #[gtfs("chrono", Vec<chrono::NaiveDate>, parse_nds)]
     pub service_dates: Vec<String>,
-
     #[gtfs(vec)]
     pub modifications: Vec<Modification>,
 }
