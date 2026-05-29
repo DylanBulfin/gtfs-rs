@@ -1,3 +1,5 @@
+use gtfs_macros::{gtfs_realtime_enum, gtfs_realtime_model};
+
 use crate::realtime::models::TimeRange;
 
 #[cfg(feature = "realtime_parse")]
@@ -6,75 +8,39 @@ use {
     serde_repr::{Deserialize_repr, Serialize_repr},
 };
 
-#[cfg(feature = "realtime_parse")]
-macro_rules! derives {
-    ($($item:item)+) => {
-        $(
-            #[derive(Serialize, Deserialize, Debug, Clone)]
-            $item
-        )+
-    };
+#[gtfs_realtime_enum(crate::realtime::parse::protos::gtfs::nyct_trip_descriptor::Direction)]
+pub enum Direction {
+    NORTH = 1,
+    EAST = 2,
+    SOUTH = 3,
+    WEST = 4,
 }
 
-#[cfg(not(feature = "realtime_parse"))]
-macro_rules! derives {
-    ($($item:item)+) => {
-        $(
-            #[derive(Debug, Clone)]
-            $item
-        )+
-    };
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TripReplacementPeriod)]
+pub struct TripReplacementPeriod {
+    pub route_id: Option<String>,
+    #[gtfs(mf)]
+    pub replacement_period: Option<TimeRange>,
 }
 
-#[cfg(feature = "realtime_parse")]
-macro_rules! derives_enum {
-    ($($item:item)+) => {
-        $(
-            #[derive(Serialize_repr, Deserialize_repr, Debug, Clone)]
-            #[repr(u8)]
-            $item
-        )+
-    };
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::NyctFeedHeader)]
+pub struct NyctFeedHeader {
+    #[gtfs(required)]
+    pub nyct_subway_version: String,
+    #[gtfs(vec)]
+    pub trip_replacement_period: Vec<TripReplacementPeriod>,
 }
 
-#[cfg(not(feature = "realtime_parse"))]
-macro_rules! derives_enum {
-    ($($item:item)+) => {
-        $(
-            #[derive(Debug, Clone)]
-            $item
-        )+
-    };
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::NyctTripDescriptor)]
+pub struct NyctTripDescriptor {
+    pub train_id: Option<String>,
+    pub is_assigned: Option<bool>,
+    #[gtfs(Enum)]
+    pub direction: Option<Direction>,
 }
 
-derives_enum!(
-    pub enum Direction {
-        North = 1,
-        East = 2,
-        South = 3,
-        West = 4,
-    }
-);
-
-derives!(
-    pub struct TripReplacementPeriod {
-        pub route_id: Option<String>,
-        pub replacement_period: Option<TimeRange>,
-    }
-
-    pub struct NyctFeedHeader {
-        pub nyct_subway_version: String,
-        pub trip_replacement_periods: Vec<TripReplacementPeriod>,
-    }
-
-    pub struct NyctTripDescriptor {
-        pub train_id: Option<String>,
-        pub is_assigned: Option<bool>,
-        pub direction: Option<Direction>,
-    }
-
-    pub struct NyctStopTimeUpdate {
-        pub scheduled_track: Option<String>,
-        pub actual_track: Option<String>,
-    }
-);
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::NyctStopTimeUpdate)]
+pub struct NyctStopTimeUpdate {
+    pub scheduled_track: Option<String>,
+    pub actual_track: Option<String>,
+}

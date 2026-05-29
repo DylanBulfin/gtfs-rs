@@ -8,9 +8,9 @@ fn main() {
         // All inputs and imports from the inputs must reside in `includes` directories.
         .includes(&["proto"])
         // Inputs must reside in some of include paths.
-        .input("proto/gtfs.proto")
-        .input("proto/mta-gtfs.proto")
+        .inputs(["proto/gtfs.proto"])
         // Specify output directory relative to Cargo output directory.
         .cargo_out_dir("protos")
+        // .out_dir("./generated")
         .run_from_script();
 }

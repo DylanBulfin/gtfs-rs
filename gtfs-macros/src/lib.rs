@@ -118,178 +118,284 @@ pub fn gtfs_schedule_model(
     .into()
 }
 
-struct CustomInput {
-    base_converter: Option<syn::Ident>,
-    // _cma: Option<syn::Ident>,
-    feature_clause: Option<CustomInputFeature>,
-}
-
-impl Parse for CustomInput {
-    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
-        Ok(Self {
-            base_converter: input.parse()?,
-            feature_clause: CustomInputFeature::parse(input).ok(),
-        })
-    }
-}
-
-struct CustomInputFeature {
-    _brk: syn::token::Bracket,
+struct FeatureAlt {
     feature: syn::LitStr,
-    _cma1: syn::Ident,
     alt_type: syn::TypePath,
-    _cma2: syn::Ident,
-    custom_convert: syn::Ident,
+    convert_fn: syn::Ident,
 }
 
-impl Parse for CustomInputFeature {
-    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
-        let content;
-        Ok(Self {
-            _brk: bracketed!(content in input),
-            feature: content.parse()?,
-            _cma1: content.parse()?,
-            alt_type: content.parse()?,
-            _cma2: content.parse()?,
-            custom_convert: content.parse()?,
-        })
+struct FeatureOpt {
+    feature: syn::LitStr,
+}
+
+enum FeatureClause {
+    Alt(FeatureAlt),
+    Opt(FeatureOpt),
+}
+
+impl From<RtHelperFeatureClause> for FeatureClause {
+    fn from(value: RtHelperFeatureClause) -> Self {
+        let RtHelperFeatureClause {
+            feature,
+            alt_clause,
+        } = value;
+
+        match alt_clause {
+            Some(alt_clause) => {
+                let RtHelperFeatureAltClause {
+                    alt_type,
+                    convert_fn,
+                    ..
+                } = alt_clause;
+
+                Self::Alt(FeatureAlt {
+                    feature,
+                    alt_type,
+                    convert_fn,
+                })
+            }
+            None => Self::Opt(FeatureOpt { feature }),
+        }
     }
 }
 
-struct FieldMeta {
-    field_name: syn::Ident,
-    base_parser: Option<syn::Ident>,
-    feature: Option<syn::LitStr>,
-    feature_parser: Option<syn::Ident>,
+struct Variable {
+    name: syn::Ident,
+    ty: VariableType,
+    feature_clause: Option<FeatureClause>,
 }
 
-// impl ToTokens for FieldMeta {
-//     fn to_tokens(&self, tokens: &mut TokenStream) {
-//         let FieldMeta {
-//             field_name,
-//             custom_parser,
-//             is_required,
-//             is_vec,
-//         } = self;
-//
-//         let a = bracketed!(tokens);
-//
-//         let field_str = format!("{}", field_name);
-//
-//         let new_content = match (is_required, is_vec, custom_parser) {
-//             (true, false, Some(parser)) => {
-//                 quote! { #field_name: #parser(#field_name.ok_or(format!("Failed to process required field {}", #field_str))?) }
-//             }
-//             (true, true, Some(parser)) => {
-//                 quote! { #field_name: #field_name.into_iter().map(#parser).collect() }
-//             }
-//             (false, false, Some(parser)) => {
-//                 quote! { #field_name: #field_name.map(|c| #parser(c))}
-//             }
-//             (true, false, None) => {
-//                 quote! { #field_name: #field_name.ok_or(format!("Failed to process required field {}", #field_str))?.try_into().map_err(|_| format!("Unable to convert {} into target type", #field_str))? }
-//             }
-//             (true, true, None) => {
-//                 quote! { #field_name: #field_name.into_iter().map(|f| f.try_into()).collect::<Result<Vec<_>, _>>()? }
-//             }
-//             (false, false, None) => {
-//                 quote! { #field_name: #field_name.map(|c| c.try_into()).collect::<Result<_, _>>()? }
-//             }
-//             (false, true, _) => unreachable!(),
-//         };
-//
-//         tokens.append_all(new_content);
-//     }
-// }
+impl Variable {
+    fn new(name: syn::Ident, input: Option<RtHelperInput>) -> Self {
+        match input {
+            None => Self {
+                name,
+                ty: VariableType::Passthrough,
+                feature_clause: None,
+            },
+            Some(RtHelperInput {
+                type_clause,
+                feature_clause,
+            }) => Self {
+                name,
+                ty: type_clause
+                    .map(|tc| tc.ty.into())
+                    .unwrap_or(VariableType::Passthrough),
+                feature_clause: feature_clause.map(|fc| fc.into()),
+            },
+        }
+    }
+}
 
-// impl ToTokens for FieldMeta {
-//     fn to_tokens(&self, tokens: &mut TokenStream) {
-//         let FieldMeta {
-//             field_name,
-//             custom_parser,
-//             is_required,
-//             is_vec,
-//         } = self;
-//
-//         let a = bracketed!(tokens);
-//
-//         let field_str = format!("{}", field_name);
-//
-//         let new_content = match (is_required, is_vec, custom_parser) {
-//             (true, false, Some(parser)) => {
-//                 quote! { #field_name: #parser(#field_name.ok_or(format!("Failed to process required field {}", #field_str))?) }
-//             }
-//             (true, true, Some(parser)) => {
-//                 quote! { #field_name: #field_name.into_iter().map(#parser).collect() }
-//             }
-//             (false, false, Some(parser)) => {
-//                 quote! { #field_name: #field_name.map(|c| #parser(c))}
-//             }
-//             (true, false, None) => {
-//                 quote! { #field_name: #field_name.ok_or(format!("Failed to process required field {}", #field_str))?.try_into().map_err(|_| format!("Unable to convert {} into target type", #field_str))? }
-//             }
-//             (true, true, None) => {
-//                 quote! { #field_name: #field_name.into_iter().map(|f| f.try_into()).collect::<Result<Vec<_>, _>>()? }
-//             }
-//             (false, false, None) => {
-//                 quote! { #field_name: #field_name.map(|c| c.try_into()).collect::<Result<_, _>>()? }
-//             }
-//             (false, true, _) => unreachable!(),
-//         };
-//
-//         tokens.append_all(new_content);
-//     }
-// }
-
-impl ToTokens for FieldMeta {
+impl ToTokens for Variable {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FieldMeta {
-            field_name,
-            base_parser,
-            feature,
-            feature_parser,
-        } = self;
+        let name = &self.name;
 
-        let new_tokens = match (base_parser, feature, feature_parser) {
-            (Some(base_parser), Some(feature), Some(feature_parser)) => {
-                quote! {
-                    #[cfg(feature = #feature)]
-                    #field_name: #base_parser(#feature_parser(#field_name)?)?,
-                    #[cfg(not(feature = #feature))]
-                    #field_name: #base_parser(#field_name)?
-                }
-            }
-            (Some(base_parser), None, None) => {
-                quote! {
-                    #field_name: #base_parser(#field_name)?
-                }
-            }
-            (None, Some(feature), Some(feature_parser)) => {
-                quote! {
-                    #[cfg(feature = #feature)]
-                    #field_name: #feature_parser(#field_name)?,
-                    #[cfg(not(feature = #feature))]
-                    #field_name: #field_name
-                }
-            }
-            (None, None, None) => {
-                quote! {
-                    #field_name: match #field_name {
+        let new_tokens = match &self.feature_clause {
+            None => match self.ty {
+                VariableType::Passthrough => quote! {
+                    #name
+                },
+                VariableType::Required => quote! {
+                    #name: #name.ok_or(String::from("Required field not provided"))?
+                },
+                VariableType::MessageField => quote! {
+                    #name: match #name.take() {
+                        Some(fld) => {
+                            Some(fld.try_into().map_err(|_| String::from("Unable to convert field"))?)
+                        },
                         None => None,
-                        Some(field) => Some(field.try_into().map_err(|_| String::from("Unable to parse field"))?)
                     }
-                }
+                },
+                VariableType::MessageFieldReq => quote! {
+                    #name: #name.take().ok_or(String::from("Unable to parse required MessageField field"))?.try_into().map_err(|_| String::from("Unable to convert field"))?
+                },
+                VariableType::Vec => quote! {
+                    #name: #name.into_iter().map(|i| i.try_into()).collect::<Result<_, _>>()?
+                },
+                VariableType::Enum => quote! {
+                    #name: match #name {
+                        Some(mtch) => Some(mtch.try_into()?),
+                        None => None
+                    }
+                },
+                VariableType::EnumReq => quote! {
+                    #name: #name.ok_or(String::from("Unable to parse required enum"))?.try_into()?
+                },
+            },
+            Some(FeatureClause::Opt(FeatureOpt { feature })) => match self.ty {
+                VariableType::Passthrough => quote! {
+                    #[cfg(feature = #feature)]
+                    #name
+                },
+                VariableType::Required => quote! {
+                    #[cfg(feature = #feature)]
+                    #name: #name.ok_or(String::from("Required field not provided"))?
+                },
+                VariableType::MessageField => quote! {
+                    #[cfg(feature = #feature)]
+                    #name: match #name.take() {
+                        Some(fld) => {
+                            Some(fld.try_into().map_err(|_| String::from("Unable to convert field"))?)
+                        },
+                        None => None,
+                    }
+                },
+                VariableType::MessageFieldReq => quote! {
+                    #[cfg(feature = #feature)]
+                    #name: #name.take().ok_or(String::from("Unable to parse required MessageField field"))?.try_into().map_err(|_| String::from("Unable to convert field"))?
+                },
+                VariableType::Vec => quote! {
+                    #[cfg(feature = #feature)]
+                    #name: #name.into_iter().map(|i| i.try_into()).collect::<Result<_, Self::Error>>()?
+                },
+                VariableType::Enum => quote! {
+                    #[cfg(feature = #feature)]
+                    #name: match #name {
+                        Some(mtch) => Some(mtch.try_into()?),
+                        None => None
+                    }
+                },
+                VariableType::EnumReq => quote! {
+                    #[cfg(feature = #feature)]
+                    #name: #name.ok_or(String::from("Unable to parse required enum"))?.try_into()?
+                },
+            },
+            Some(FeatureClause::Alt(FeatureAlt {
+                feature,
+                convert_fn,
+                ..
+            })) => {
+                unimplemented!()
             }
-            _ => panic!("Unexpected FieldMeta value"),
         };
 
-        tokens.append_all(new_tokens.into_iter());
+        tokens.append_all(new_tokens);
+    }
+}
+
+enum VariableType {
+    // This variable is a bare Option type in the protobuf representation, and an Option
+    // type in the gtfs-rust field
+    // DEFAULT
+    Passthrough,
+    // This field is a bare Option type in the protobuf representation, and a required type in the
+    // gtfs-rust field
+    Required,
+    // This field is a MessageField type, and an Option type in the gtfs-rust field
+    MessageField,
+    // This field is a MessageField type, and a required type in the gtfs-rust field
+    MessageFieldReq,
+    // This field is a Vec of non-trivial types
+    Vec,
+    Enum,
+    EnumReq,
+}
+
+impl From<syn::Ident> for VariableType {
+    fn from(value: syn::Ident) -> Self {
+        if value.to_string().to_uppercase() == "PASSTHROUGH" {
+            Self::Passthrough
+        } else if value.to_string().to_uppercase() == "REQUIRED" {
+            Self::Required
+        } else if value.to_string().to_uppercase() == "MF" {
+            Self::MessageField
+        } else if value.to_string().to_uppercase() == "MFREQ" {
+            Self::MessageFieldReq
+        } else if value.to_string().to_uppercase() == "VEC" {
+            Self::Vec
+        } else if value.to_string().to_uppercase() == "ENUM" {
+            Self::Enum
+        } else if value.to_string().to_uppercase() == "ENUMREQ" {
+            Self::EnumReq
+        } else {
+            panic!("Unrecognized variable type")
+        }
+    }
+}
+
+struct RtHelperTypeClause {
+    ty: syn::Ident,
+    _cma: Option<Token![,]>,
+}
+
+impl Parse for RtHelperTypeClause {
+    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            ty: input.parse()?,
+            _cma: input.parse()?,
+        })
+    }
+}
+
+struct RtHelperFeatureClause {
+    feature: syn::LitStr,
+    alt_clause: Option<RtHelperFeatureAltClause>,
+}
+
+impl Parse for RtHelperFeatureClause {
+    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
+        let feature = input.parse()?;
+        let alt_clause = if input.peek(Token![,]) {
+            Some(RtHelperFeatureAltClause::parse(input)?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            feature,
+            alt_clause,
+        })
+    }
+}
+
+struct RtHelperFeatureAltClause {
+    _cma1: Token![,],
+    alt_type: syn::TypePath,
+    _cma2: Token![,],
+    convert_fn: syn::Ident,
+}
+
+impl Parse for RtHelperFeatureAltClause {
+    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
+        Ok(Self {
+            _cma1: input.parse()?,
+            alt_type: input.parse()?,
+            _cma2: input.parse()?,
+            convert_fn: input.parse()?,
+        })
+    }
+}
+
+struct RtHelperInput {
+    type_clause: Option<RtHelperTypeClause>,
+    feature_clause: Option<RtHelperFeatureClause>,
+}
+
+impl Parse for RtHelperInput {
+    fn parse(input: parse::ParseStream) -> syn::Result<Self> {
+        let type_clause = if input.peek(syn::Ident) {
+            Some(RtHelperTypeClause::parse(input)?)
+        } else {
+            None
+        };
+
+        let feature_clause = if input.peek(syn::LitStr) {
+            Some(RtHelperFeatureClause::parse(input)?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            type_clause,
+            feature_clause,
+        })
     }
 }
 
 #[proc_macro_attribute]
 pub fn gtfs_realtime_model(
-    args: proc_macro::TokenStream,
+    arg: proc_macro::TokenStream,
     item: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let base_derive_line = quote! {
@@ -299,141 +405,113 @@ pub fn gtfs_realtime_model(
         #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     };
 
-    let mut item_struct: syn::ItemStruct = syn::parse(item).expect("Unable to parse input struct");
+    let mut item: syn::ItemStruct = parse_macro_input!(item);
+    let arg: syn::TypePath = parse_macro_input!(arg);
 
+    let mut variables = Vec::new();
     let mut fields = Vec::new();
-    let mut fields_meta = Vec::new();
 
-    for ptr in item_struct.fields.iter_mut() {
-        let mut attrs = Vec::new();
-        let mut custom_input: Option<CustomInput> = None;
+    let name = &item.ident;
 
-        for attr in mem::take(&mut ptr.attrs) {
-            if attr.path().get_ident().map(|i| i.to_string()).as_deref() == Some("gtfs_custom") {
-                custom_input = Some(
-                    attr.parse_args()
-                        .expect("Unable to parse chrono macro input"),
-                );
+    for field in item.fields.iter_mut() {
+        let name: syn::Ident = field.ident.clone().unwrap();
+        let mut helper_input: Option<RtHelperInput> = None;
+
+        let mut new_attrs = Vec::new();
+
+        for attr in mem::take(&mut field.attrs).into_iter() {
+            if attr.meta.path().get_ident().map(|i| i.to_string()) == Some(String::from("gtfs")) {
+                helper_input = Some(attr.parse_args().unwrap());
             } else {
-                attrs.push(attr);
+                new_attrs.push(attr);
             }
         }
 
-        let _ = mem::replace(&mut ptr.attrs, attrs);
+        item.attrs = new_attrs;
 
-        let mut custom_convert: Option<syn::Ident> = None;
-
-        match custom_input {
-            Some(input) => {
-                let CustomInput {
-                    base_converter,
-                    feature_clause,
-                } = input;
-                if let Some(CustomInputFeature {
+        if let Some(RtHelperInput {
+            feature_clause:
+                Some(RtHelperFeatureClause {
                     feature,
-                    alt_type,
-                    custom_convert,
+                    alt_clause,
                     ..
-                }) = feature_clause
-                {
+                }),
+            ..
+        }) = &helper_input
+        {
+            match alt_clause {
+                Some(RtHelperFeatureAltClause { alt_type, .. }) => {
                     fields.push(quote!(
                         #[cfg(not(feature = #feature))]
-                        #ptr
+                        #field
                     ));
 
-                    ptr.ty = Type::Path(alt_type);
+                    field.ty = syn::Type::Path(alt_type.clone());
 
                     fields.push(quote!(
-                        #[cfg(not(feature = #feature))]
-                        #ptr
+                        #[cfg(feature = #feature)]
+                        #field
                     ));
-
-                    fields_meta.push(FieldMeta {
-                        field_name: ptr.ident.clone().expect("Fields should be named"),
-                        base_parser: base_converter,
-                        feature: Some(feature),
-                        feature_parser: Some(custom_convert),
-                    });
-                } else {
-                    // No feature clause
-                    fields.push(quote! {
-                        #ptr
-                    });
-
-                    fields_meta.push(FieldMeta {
-                        field_name: ptr.ident.clone().expect("Fields should be named"),
-                        base_parser: base_converter,
-                        feature: None,
-                        feature_parser: None,
-                    });
                 }
+                None => fields.push(quote!(
+                    #[cfg(feature = #feature)]
+                    #field
+                )),
             }
-            None => {
-                fields.push(quote! {
-                    #ptr
-                });
-                fields_meta.push(FieldMeta {
-                    field_name: ptr.ident.clone().expect("Fields should be named"),
-                    base_parser: None,
-                    feature: None,
-                    feature_parser: None,
-                });
-            }
+        } else {
+            fields.push(quote!(#field));
         }
+
+        variables.push(Variable::new(name, helper_input));
     }
 
-    item_struct.fields = syn::Fields::Named(
-        syn::parse2(quote! {
-            {
-                #(
-                    #fields
-                ),*
-            }
-        })
-        .expect("Unable to parse fields"),
+    item.fields = syn::Fields::Named(
+        syn::parse2(quote! {{
+            #(
+                #fields
+            ),*
+        }})
+        .unwrap(),
     );
 
-    let struct_ident = item_struct.ident.clone();
-    let proto_ident: syn::TypePath = syn::parse(args).expect("Unable to parse path to proto type");
+    let field_names = variables.iter().map(|v| &v.name);
 
-    let field_names = fields_meta.iter().map(|f| &f.field_name);
-
-    let fields_meta_alt: Vec<&FieldMeta> = fields_meta.iter().collect();
-
-    let struct_convert = quote! {
-        impl TryFrom<#proto_ident> for #struct_ident {
+    let impls = quote! {
+        impl TryFrom<#arg> for #name {
             type Error = crate::error::Error;
 
-            fn try_from(value: #proto_ident) -> Result<Self, Self::Error> {
-                let #proto_ident {
-                    #(#field_names),*,
-                    ..
+            fn try_from(value: #arg) -> Result<Self, Self::Error> {
+                let #arg {
+                    #(
+                        mut #field_names
+                    ),*
+                    ,..
                 } = value;
 
                 Ok(Self {
                     #(
-                        #fields_meta_alt
+                        #variables
                     ),*
                 })
             }
         }
     };
 
-    // panic!("{}", struct_convert);
-
-    quote! {
-        #[cfg(feature = "schedule_parse")]
+    let result = quote!(
+        #[cfg(feature = "realtime_parse")]
         #parse_derive_line
-        #item_struct
+        #item
 
-        #[cfg(not(feature = "schedule_parse"))]
+        #[cfg(not(feature = "realtime_parse"))]
         #base_derive_line
-        #item_struct
+        #item
 
-        #[cfg(feature = "schedule_parse")]
-        #struct_convert
-    }
-    .into()
+        #impls
+    );
+
+    // panic!("{}", result);
+
+    result.into()
 }
 
 #[proc_macro_attribute]

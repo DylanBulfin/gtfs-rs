@@ -7,12 +7,6 @@ use chrono_tz::Tz;
 use gtfs_macros::{gtfs_realtime_enum, gtfs_realtime_model};
 use protobuf::MessageField;
 
-#[cfg(feature = "realtime_parse")]
-use {
-    serde::{Deserialize, Serialize},
-    serde_repr::{Deserialize_repr, Serialize_repr},
-};
-
 #[cfg(feature = "realtime_mta")]
 use crate::realtime::models_mta::{NyctFeedHeader, NyctStopTimeUpdate, NyctTripDescriptor};
 
@@ -184,42 +178,45 @@ where
     Ok(b?)
 }
 
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::FeedMessage)]
 pub struct FeedMessage {
+    #[gtfs(mfreq)]
     header: FeedHeader,
+    #[gtfs(vec)]
     entity: Vec<FeedEntity>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::FeedHeader)]
 pub struct FeedHeader {
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub gtfs_realtime_version: String,
+    #[gtfs(Enum)]
     pub incrementality: Option<Incrementality>,
 
     pub timestamp: Option<u64>,
 
     pub feed_version: Option<String>,
-    //
-    // #[cfg(feature = "realtime_mta")]
-    // pub nyct_feed_header: Option<NyctFeedHeader>,
+    #[gtfs(mf, "realtime_mta")]
+    pub nyct_feed_header: Option<NyctFeedHeader>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::FeedEntity)]
 pub struct FeedEntity {
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub id: String,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub is_deleted: bool,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub trip_update: Option<TripUpdate>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub vehicle: Option<VehiclePosition>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub alert: Option<Alert>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub shape: Option<Shape>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub stop: Option<Stop>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub trip_modifications: Option<TripModifications>,
 }
 
@@ -234,18 +231,15 @@ pub struct StopTimeEvent {
     pub scheduled_time: Option<i64>,
 }
 
-fn test(
-    a: crate::realtime::parse::protos::gtfs::trip_update::stop_time_update::StopTimeProperties,
-) {
-}
-
 #[gtfs_realtime_model(
     crate::realtime::parse::protos::gtfs::trip_update::stop_time_update::StopTimeProperties
 )]
 pub struct StopTimeProperties {
     pub assigned_stop_id: Option<String>,
     pub stop_headsign: Option<String>,
+    #[gtfs(mf)]
     pub pickup_type: Option<DropoffPickupType>,
+    #[gtfs(mf)]
     pub drop_off_type: Option<DropoffPickupType>,
 }
 
@@ -253,17 +247,18 @@ pub struct StopTimeProperties {
 pub struct StopTimeUpdate {
     pub stop_sequence: Option<u32>,
     pub stop_id: Option<String>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub arrival: Option<StopTimeEvent>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub departure: Option<StopTimeEvent>,
+    #[gtfs(Enum)]
     pub departure_occupancy_status: Option<OccupancyStatus>,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(mfreq)]
     pub schedule_relationship: StopScheduleRelationship,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub stop_time_properties: Option<StopTimeProperties>,
-    // #[cfg(feature = "realtime_mta")]
-    // pub nyct_stop_time_update: Option<NyctStopTimeUpdate>,
+    #[gtfs(mf, "realtime_mta")]
+    pub nyct_stop_time_update: Option<NyctStopTimeUpdate>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::trip_update::TripProperties)]
@@ -281,17 +276,17 @@ pub struct TripProperties {
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TripUpdate)]
 pub struct TripUpdate {
-    #[gtfs_custom(parse_mf_req)]
+    #[gtfs(mfreq)]
     pub trip: TripDescriptor,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub vehicle: Option<VehicleDescriptor>,
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub stop_time_update: Vec<StopTimeUpdate>,
 
     pub timestamp: Option<u64>,
 
     pub delay: Option<i32>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub trip_properties: Option<TripProperties>,
 }
 
@@ -299,64 +294,66 @@ pub struct TripUpdate {
 pub struct CarriageDetails {
     pub id: Option<String>,
     pub label: Option<String>,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(enumreq)]
     pub occupancy_status: OccupancyStatus,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub occupancy_percentage: i32,
-    pub carriage_sequence: Option<i32>,
+    pub carriage_sequence: Option<u32>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::VehiclePosition)]
 pub struct VehiclePosition {
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub trip: Option<TripDescriptor>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub vehicle: Option<VehicleDescriptor>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub position: Option<Position>,
     pub current_stop_sequence: Option<u32>,
     pub stop_id: Option<String>,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(enumreq)]
     pub current_status: VehicleStopStatus,
 
     pub timestamp: Option<u64>,
 
+    #[gtfs(mf)]
     pub congestion_level: Option<CongestionLevel>,
+    #[gtfs(Enum)]
     pub occupancy_status: Option<OccupancyStatus>,
     pub occupancy_percentage: Option<u32>,
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub multi_carriage_details: Vec<CarriageDetails>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::Alert)]
 pub struct Alert {
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub active_period: Vec<TimeRange>,
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub informed_entity: Vec<EntitySelector>,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(enumreq)]
     pub cause: Cause,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(enumreq)]
     pub effect: Effect,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub url: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub header_text: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub description_text: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub tts_header_text: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub tts_description_text: Option<TranslatedString>,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(enumreq)]
     pub severity_level: SeverityLevel,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub image: Option<TranslatedImage>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub image_alternative_text: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub cause_detail: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub effect_detail: Option<TranslatedString>,
 }
 
@@ -369,13 +366,13 @@ pub struct TimeRange {
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::Position)]
 pub struct Position {
-    #[gtfs_custom(parse_required)]
-    pub latitude: f64,
-    #[gtfs_custom(parse_required)]
-    pub longitude: f64,
-    pub bearing: Option<f64>,
+    #[gtfs(required)]
+    pub latitude: f32,
+    #[gtfs(required)]
+    pub longitude: f32,
+    pub bearing: Option<f32>,
     pub odometer: Option<f64>,
-    pub speed: Option<f64>,
+    pub speed: Option<f32>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::trip_descriptor::ModifiedTripSelector)]
@@ -392,17 +389,18 @@ pub struct ModifiedTripSelector {
 pub struct TripDescriptor {
     pub trip_id: Option<String>,
     pub route_id: Option<String>,
-    pub direction_id: Option<bool>,
+    pub direction_id: Option<u32>,
 
     pub start_time: Option<String>,
 
     pub start_date: Option<String>,
 
+    #[gtfs(mf)]
     pub schedule_relationship: Option<TripScheduleRelationship>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub modified_trip: Option<ModifiedTripSelector>,
-    // #[cfg(feature = "realtime_mta")]
-    // pub nyct_trip_descriptor: Option<NyctTripDescriptor>,
+    #[gtfs(mf, "realtime_mta")]
+    pub nyct_trip_descriptor: Option<NyctTripDescriptor>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::VehicleDescriptor)]
@@ -410,6 +408,7 @@ pub struct VehicleDescriptor {
     pub id: Option<String>,
     pub label: Option<String>,
     pub license_plate: Option<String>,
+    #[gtfs(Enum)]
     pub wheelchair_accessible: Option<WheelchairAccessOverride>,
 }
 
@@ -418,37 +417,37 @@ pub struct EntitySelector {
     pub agency_id: Option<String>,
     pub route_id: Option<String>,
     pub route_type: Option<i32>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub trip: Option<TripDescriptor>,
     pub stop_id: Option<String>,
-    pub direction_id: Option<bool>,
+    pub direction_id: Option<u32>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::translated_string::Translation)]
 pub struct Translation {
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub text: String,
     pub language: Option<String>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TranslatedString)]
 pub struct TranslatedString {
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub translation: Vec<Translation>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::translated_image::LocalizedImage)]
 pub struct LocalizedImage {
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub url: String,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub media_type: String,
     pub language: Option<String>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TranslatedImage)]
 pub struct TranslatedImage {
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub localized_image: Vec<LocalizedImage>,
 }
 
@@ -461,40 +460,40 @@ pub struct Shape {
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::Stop)]
 pub struct Stop {
     pub stop_id: Option<String>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub stop_code: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub stop_name: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub tts_stop_name: Option<TranslatedString>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub stop_desc: Option<TranslatedString>,
-    pub stop_lat: Option<f64>,
-    pub stop_lon: Option<f64>,
+    pub stop_lat: Option<f32>,
+    pub stop_lon: Option<f32>,
     pub zone_id: Option<String>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub stop_url: Option<TranslatedString>,
     pub parent_station: Option<String>,
 
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub stop_timezone: String,
 
-    #[gtfs_custom(parse_required)]
+    #[gtfs(enumreq)]
     pub wheelchair_boarding: WheelchairBoarding,
     pub level_id: Option<String>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub platform_code: Option<TranslatedString>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::trip_modifications::Modification)]
 pub struct Modification {
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub start_stop_selector: Option<StopSelector>,
-    #[gtfs_custom(parse_mf)]
+    #[gtfs(mf)]
     pub end_stop_selector: Option<StopSelector>,
-    #[gtfs_custom(parse_required)]
+    #[gtfs(required)]
     pub propagated_modification_delay: i32,
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub replacement_stops: Vec<ReplacementStop>,
     pub service_alert_id: Option<String>,
 
@@ -503,23 +502,23 @@ pub struct Modification {
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::trip_modifications::SelectedTrips)]
 pub struct SelectedTrips {
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub trip_ids: Vec<String>,
     pub shape_id: Option<String>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TripModifications)]
 pub struct TripModifications {
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub selected_trips: Vec<SelectedTrips>,
 
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub start_times: Vec<String>,
 
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub service_dates: Vec<String>,
 
-    #[gtfs_custom(parse_vec)]
+    #[gtfs(vec)]
     pub modifications: Vec<Modification>,
 }
 
