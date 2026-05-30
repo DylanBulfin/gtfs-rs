@@ -260,8 +260,8 @@ pub struct FeedMessage {
 pub struct FeedHeader {
     #[gtfs(required)]
     pub gtfs_realtime_version: String,
-    #[gtfs(Enum)]
-    pub incrementality: Option<Incrementality>,
+    #[gtfs(enumreq(Incrementality::FULL_DATASET))]
+    pub incrementality: Incrementality,
     #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub timestamp: Option<u64>,
     pub feed_version: Option<String>,
@@ -273,7 +273,7 @@ pub struct FeedHeader {
 pub struct FeedEntity {
     #[gtfs(required)]
     pub id: String,
-    #[gtfs(required)]
+    #[gtfs(required(false))]
     pub is_deleted: bool,
     #[gtfs(mf)]
     pub trip_update: Option<TripUpdate>,
@@ -321,7 +321,7 @@ pub struct StopTimeUpdate {
     pub departure: Option<StopTimeEvent>,
     #[gtfs(Enum)]
     pub departure_occupancy_status: Option<OccupancyStatus>,
-    #[gtfs(mfreq)]
+    #[gtfs(enumreq(StopScheduleRelationship::SCHEDULED))]
     pub schedule_relationship: StopScheduleRelationship,
     #[gtfs(mf)]
     pub stop_time_properties: Option<StopTimeProperties>,
@@ -360,9 +360,9 @@ pub struct TripUpdate {
 pub struct CarriageDetails {
     pub id: Option<String>,
     pub label: Option<String>,
-    #[gtfs(enumreq)]
+    #[gtfs(enumreq(OccupancyStatus::NO_DATA_AVAILABLE))]
     pub occupancy_status: OccupancyStatus,
-    #[gtfs(required)]
+    #[gtfs(required(-1))]
     pub occupancy_percentage: i32,
     pub carriage_sequence: Option<u32>,
 }
@@ -377,7 +377,7 @@ pub struct VehiclePosition {
     pub position: Option<Position>,
     pub current_stop_sequence: Option<u32>,
     pub stop_id: Option<String>,
-    #[gtfs(enumreq)]
+    #[gtfs(enumreq(VehicleStopStatus::IN_TRANSIT_TO))]
     pub current_status: VehicleStopStatus,
     #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub timestamp: Option<u64>,
@@ -396,9 +396,9 @@ pub struct Alert {
     pub active_period: Vec<TimeRange>,
     #[gtfs(vec)]
     pub informed_entity: Vec<EntitySelector>,
-    #[gtfs(enumreq)]
+    #[gtfs(enumreq(Cause::UNKNOWN_CAUSE))]
     pub cause: Cause,
-    #[gtfs(enumreq)]
+    #[gtfs(enumreq(Effect::UNKNOWN_EFFECT))]
     pub effect: Effect,
     #[gtfs(mf)]
     pub url: Option<TranslatedString>,
@@ -410,7 +410,7 @@ pub struct Alert {
     pub tts_header_text: Option<TranslatedString>,
     #[gtfs(mf)]
     pub tts_description_text: Option<TranslatedString>,
-    #[gtfs(enumreq)]
+    #[gtfs(enumreq(SeverityLevel::UNKNOWN_SEVERITY))]
     pub severity_level: SeverityLevel,
     #[gtfs(mf)]
     pub image: Option<TranslatedImage>,
@@ -473,8 +473,8 @@ pub struct VehicleDescriptor {
     pub id: Option<String>,
     pub label: Option<String>,
     pub license_plate: Option<String>,
-    #[gtfs(Enum)]
-    pub wheelchair_accessible: Option<WheelchairAccessOverride>,
+    #[gtfs(enumreq(WheelchairAccessOverride::NO_VALUE))]
+    pub wheelchair_accessible: WheelchairAccessOverride,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::EntitySelector)]
@@ -541,7 +541,7 @@ pub struct Stop {
     pub parent_station: Option<String>,
     #[gtfs(required, "chrono_tz", chrono_tz::Tz, parse_tz)]
     pub stop_timezone: String,
-    #[gtfs(enumreq)]
+    #[gtfs(enumreq(WheelchairBoarding::UNKNOWN))]
     pub wheelchair_boarding: WheelchairBoarding,
     pub level_id: Option<String>,
     #[gtfs(mf)]
@@ -554,7 +554,7 @@ pub struct Modification {
     pub start_stop_selector: Option<StopSelector>,
     #[gtfs(mf)]
     pub end_stop_selector: Option<StopSelector>,
-    #[gtfs(required)]
+    #[gtfs(required(0))]
     pub propagated_modification_delay: i32,
     #[gtfs(vec)]
     pub replacement_stops: Vec<ReplacementStop>,
