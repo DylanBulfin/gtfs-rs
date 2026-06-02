@@ -2,15 +2,8 @@
 
 use std::str::FromStr;
 
-#[cfg(feature = "chrono")]
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-#[cfg(feature = "chrono_tz")]
-use chrono_tz::Tz;
 use gtfs_macros::{gtfs_realtime_enum, gtfs_realtime_model};
 use protobuf::MessageField;
-
-#[cfg(feature = "realtime_mta")]
-use crate::realtime::models_mta::{NyctFeedHeader, NyctStopTimeUpdate, NyctTripDescriptor};
 
 #[gtfs_realtime_enum(crate::realtime::parse::protos::gtfs::feed_header::Incrementality)]
 pub enum Incrementality {
@@ -133,6 +126,14 @@ pub enum SeverityLevel {
     SEVERE = 4,
 }
 
+#[gtfs_realtime_enum(crate::realtime::parse::protos::gtfs::nyct_trip_descriptor::Direction)]
+pub enum Direction {
+    NORTH = 1,
+    EAST = 2,
+    SOUTH = 3,
+    WEST = 4,
+}
+
 fn parse_dt_u64(
     value: Option<u64>,
 ) -> Result<Option<chrono::DateTime<chrono::Utc>>, crate::error::Error> {
@@ -168,7 +169,7 @@ fn parse_nt(value: Option<String>) -> Result<Option<chrono::NaiveTime>, crate::e
                 .parse()
                 .map_err(|_| String::from("Unable to parse second"))?;
 
-            Ok(NaiveTime::from_hms_opt(hour, min, sec))
+            Ok(chrono::NaiveTime::from_hms_opt(hour, min, sec))
         }
         None => Ok(None),
     }
@@ -187,7 +188,7 @@ fn parse_nd(value: Option<String>) -> Result<Option<chrono::NaiveDate>, crate::e
                 .parse()
                 .map_err(|_| String::from("Unable to parse day"))?;
 
-            Ok(NaiveDate::from_ymd_opt(year, month, day))
+            Ok(chrono::NaiveDate::from_ymd_opt(year, month, day))
         }
         None => Ok(None),
     }
@@ -208,7 +209,7 @@ fn parse_nds(value: Vec<String>) -> Result<Vec<chrono::NaiveDate>, crate::error:
             .map_err(|_| String::from("Unable to parse day"))?;
 
         res.push(
-            NaiveDate::from_ymd_opt(year, month, day)
+            chrono::NaiveDate::from_ymd_opt(year, month, day)
                 .ok_or(String::from("Unable to parse NaiveDate in list"))?,
         );
     }
@@ -231,7 +232,7 @@ fn parse_nts(value: Vec<String>) -> Result<Vec<chrono::NaiveTime>, crate::error:
             .map_err(|_| String::from("Unable to parse sec"))?;
 
         res.push(
-            NaiveTime::from_hms_opt(hour, min, sec)
+            chrono::NaiveTime::from_hms_opt(hour, min, sec)
                 .ok_or(String::from("Unable to parse NaiveTime in list"))?,
         );
     }
@@ -251,9 +252,9 @@ fn parse_tz(value: Option<String>) -> Result<Option<chrono_tz::Tz>, crate::error
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::FeedMessage)]
 pub struct FeedMessage {
     #[gtfs(mfreq)]
-    header: FeedHeader,
+    pub header: FeedHeader,
     #[gtfs(vec)]
-    entity: Vec<FeedEntity>,
+    pub entity: Vec<FeedEntity>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::FeedHeader)]
@@ -592,4 +593,33 @@ pub struct StopSelector {
 pub struct ReplacementStop {
     pub travel_time_to_stop: Option<i32>,
     pub stop_id: Option<String>,
+}
+
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TripReplacementPeriod)]
+pub struct TripReplacementPeriod {
+    pub route_id: Option<String>,
+    #[gtfs(mfreq)]
+    pub replacement_period: TimeRange,
+}
+
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::NyctFeedHeader)]
+pub struct NyctFeedHeader {
+    #[gtfs(required)]
+    pub nyct_subway_version: String,
+    #[gtfs(vec)]
+    pub trip_replacement_period: Vec<TripReplacementPeriod>,
+}
+
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::NyctTripDescriptor)]
+pub struct NyctTripDescriptor {
+    pub train_id: Option<String>,
+    pub is_assigned: Option<bool>,
+    #[gtfs(Enum)]
+    pub direction: Option<Direction>,
+}
+
+#[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::NyctStopTimeUpdate)]
+pub struct NyctStopTimeUpdate {
+    pub scheduled_track: Option<String>,
+    pub actual_track: Option<String>,
 }
