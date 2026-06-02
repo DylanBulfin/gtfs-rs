@@ -28,11 +28,7 @@ mod tests {
             )
             .unwrap();
 
-            let $ident = crate::realtime::models::FeedMessage::try_from($ident).unwrap();
-
-            if $file == "jz" {
-                eprintln!("{:?}", $ident);
-            }
+            let _ = crate::realtime::models::FeedMessage::try_from($ident).unwrap();
         };
     }
 
@@ -47,27 +43,6 @@ mod tests {
         parse_file!(rtnqrw, "nqrw");
         parse_file!(rtsir, "sir");
 
-        panic!();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::fs::File;
-
-    use protobuf::Message;
-
-    use crate::realtime::parse::protos;
-
-    #[test]
-    fn test_parse_ace() {
-        let message = protos::gtfs::FeedMessage::parse_from_reader(
-            &mut File::open("test_data/realtime/ace").unwrap(),
-        )
-        .unwrap();
-
-        let converted_message = crate::realtime::models::FeedMessage::try_from(message).unwrap();
-
-        eprintln!("{:?}", converted_message);
+        // panic!();
     }
 }
