@@ -3,7 +3,6 @@
 use std::str::FromStr;
 
 use gtfs_macros::{gtfs_realtime_enum, gtfs_realtime_model};
-use protobuf::MessageField;
 
 #[gtfs_realtime_enum(crate::realtime::parse::protos::gtfs::feed_header::Incrementality)]
 pub enum Incrementality {
@@ -20,6 +19,7 @@ pub enum DropoffPickupType {
 }
 
 #[gtfs_realtime_enum(crate::realtime::parse::protos::gtfs::vehicle_position::OccupancyStatus)]
+// Experimental
 pub enum OccupancyStatus {
     EMPTY = 0,
     MANY_SEATS_AVAILABLE = 1,
@@ -39,6 +39,7 @@ pub enum StopScheduleRelationship {
     SCHEDULED = 0,
     SKIPPED = 1,
     NO_DATA = 2,
+    // Experimental
     UNSCHEDULED = 3,
 }
 
@@ -48,9 +49,13 @@ pub enum TripScheduleRelationship {
     ADDED = 1,
     UNSCHEDULED = 2,
     CANCELED = 3,
+    // Experimental
     REPLACEMENT = 5,
+    // Experimental
     DUPLICATED = 6,
+    // Experimental
     DELETED = 7,
+    // Experimental
     NEW = 8,
 }
 
@@ -283,10 +288,13 @@ pub struct FeedEntity {
     #[gtfs(mf)]
     pub alert: Option<Alert>,
     #[gtfs(mf)]
+    // Experimental
     pub shape: Option<Shape>,
     #[gtfs(mf)]
+    // Experimental
     pub stop: Option<Stop>,
     #[gtfs(mf)]
+    // Experimental
     pub trip_modifications: Option<TripModifications>,
 }
 
@@ -297,18 +305,24 @@ pub struct StopTimeEvent {
     pub time: Option<i64>,
     pub uncertainty: Option<i32>,
     #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_i64)]
+    // Experimental
     pub scheduled_time: Option<i64>,
 }
 
 #[gtfs_realtime_model(
     crate::realtime::parse::protos::gtfs::trip_update::stop_time_update::StopTimeProperties
 )]
+// Experimental
 pub struct StopTimeProperties {
+    // Experimental
     pub assigned_stop_id: Option<String>,
+    // Experimental
     pub stop_headsign: Option<String>,
     #[gtfs(mf)]
+    // Experimental
     pub pickup_type: Option<DropoffPickupType>,
     #[gtfs(mf)]
+    // Experimental
     pub drop_off_type: Option<DropoffPickupType>,
 }
 
@@ -325,20 +339,28 @@ pub struct StopTimeUpdate {
     #[gtfs(enumreq(StopScheduleRelationship::SCHEDULED))]
     pub schedule_relationship: StopScheduleRelationship,
     #[gtfs(mf)]
+    // Experimental
     pub stop_time_properties: Option<StopTimeProperties>,
     #[gtfs(mf, "realtime_mta")]
     pub nyct_stop_time_update: Option<NyctStopTimeUpdate>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::trip_update::TripProperties)]
+// Experimental
 pub struct TripProperties {
+    // Experimental
     pub trip_id: Option<String>,
     #[gtfs("chrono", Option<chrono::NaiveDate>, parse_nd)]
+    // Experimental
     pub start_date: Option<String>,
     #[gtfs("chrono", Option<chrono::NaiveTime>, parse_nt)]
+    // Experimental
     pub start_time: Option<String>,
+    // Experimental
     pub shape_id: Option<String>,
+    // Experimental
     pub trip_headsign: Option<String>,
+    // Experimental
     pub trip_short_name: Option<String>,
 }
 
@@ -352,19 +374,27 @@ pub struct TripUpdate {
     pub stop_time_update: Vec<StopTimeUpdate>,
     #[gtfs("chrono", Option<chrono::DateTime<chrono::Utc>>, parse_dt_u64)]
     pub timestamp: Option<u64>,
+    // Experimental
     pub delay: Option<i32>,
     #[gtfs(mf)]
+    // Experimental
     pub trip_properties: Option<TripProperties>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::vehicle_position::CarriageDetails)]
+// Experimental
 pub struct CarriageDetails {
+    // Experimental
     pub id: Option<String>,
+    // Experimental
     pub label: Option<String>,
     #[gtfs(enumreq(OccupancyStatus::NO_DATA_AVAILABLE))]
+    // Experimental
     pub occupancy_status: OccupancyStatus,
     #[gtfs(required(-1))]
+    // Experimental
     pub occupancy_percentage: i32,
+    // Experimental
     pub carriage_sequence: Option<u32>,
 }
 
@@ -388,6 +418,7 @@ pub struct VehiclePosition {
     pub occupancy_status: Option<OccupancyStatus>,
     pub occupancy_percentage: Option<u32>,
     #[gtfs(vec)]
+    // Experimental
     pub multi_carriage_details: Vec<CarriageDetails>,
 }
 
@@ -414,12 +445,16 @@ pub struct Alert {
     #[gtfs(enumreq(SeverityLevel::UNKNOWN_SEVERITY))]
     pub severity_level: SeverityLevel,
     #[gtfs(mf)]
+    // Experimental
     pub image: Option<TranslatedImage>,
     #[gtfs(mf)]
+    // Experimental
     pub image_alternative_text: Option<TranslatedString>,
     #[gtfs(mf)]
+    // Experimental
     pub cause_detail: Option<TranslatedString>,
     #[gtfs(mf)]
+    // Experimental
     pub effect_detail: Option<TranslatedString>,
 }
 
@@ -503,6 +538,7 @@ pub struct TranslatedString {
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::translated_image::LocalizedImage)]
+// Experimental
 pub struct LocalizedImage {
     #[gtfs(required)]
     pub url: String,
@@ -518,12 +554,16 @@ pub struct TranslatedImage {
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::Shape)]
+// Experimental
 pub struct Shape {
+    // Experimental
     pub shape_id: Option<String>,
+    // Experimental
     pub encoded_polyline: Option<String>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::Stop)]
+// Experimental
 pub struct Stop {
     pub stop_id: Option<String>,
     #[gtfs(mf)]
@@ -572,6 +612,7 @@ pub struct SelectedTrips {
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::TripModifications)]
+// Experimental
 pub struct TripModifications {
     #[gtfs(vec)]
     pub selected_trips: Vec<SelectedTrips>,
@@ -584,12 +625,14 @@ pub struct TripModifications {
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::StopSelector)]
+// Experimental
 pub struct StopSelector {
     pub stop_sequence: Option<u32>,
     pub stop_id: Option<String>,
 }
 
 #[gtfs_realtime_model(crate::realtime::parse::protos::gtfs::ReplacementStop)]
+// Experimental
 pub struct ReplacementStop {
     pub travel_time_to_stop: Option<i32>,
     pub stop_id: Option<String>,
